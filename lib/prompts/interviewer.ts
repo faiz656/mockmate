@@ -1,44 +1,196 @@
 import type { InterviewConfig } from "@/types/interview";
 
+const roleQuestions: Record<string, string[]> = {
+  frontend_developer: [
+    "Walk me through how the browser renders a page from the moment a user hits Enter to when they see content.",
+    "You have a React component re-rendering 60 times per second. How do you debug it and what are the likely causes?",
+    "Explain the difference between useMemo and useCallback. When have you actually needed them — not just theory?",
+    "A client complains the site is slow on mobile in Karachi but fast in Lahore. How do you approach this?",
+    "You're building a form with 20 fields, complex validation, and conditional rendering. What's your architecture?",
+    "How does the CSS cascade actually work? Give me a specific example where specificity surprised you.",
+    "What's the difference between SSR, SSG, and CSR in Next.js? When would you use each in a Pakistani startup context?",
+    "You push code Friday evening and the entire checkout breaks in production. Walk me through exactly what you do.",
+  ],
+  backend_developer: [
+    "A database query that takes 2ms in testing takes 8 seconds in production with real data. Walk me through your debugging process.",
+    "Explain the N+1 problem. How have you actually encountered and fixed it?",
+    "You're designing an API for a food delivery app that needs to handle 10,000 orders during iftar time. What considerations matter?",
+    "How does indexing work in PostgreSQL? When does an index hurt performance instead of helping?",
+    "Walk me through exactly what happens when a Node.js server crashes and how you'd prevent data loss.",
+    "Explain JWT authentication. What are its weaknesses and how do you mitigate them?",
+    "You have a microservice that's been down for 3 minutes. Orders are queuing up. What's your recovery strategy?",
+    "How would you design the database schema for a multi-tenant SaaS product where each company sees only their data?",
+  ],
+  fullstack_developer: [
+    "You're building a real-time notification system for a Pakistani e-commerce site. Walk me through your full tech stack decision.",
+    "A page loads fine on your machine but takes 12 seconds for a user in Multan on mobile data. Diagnose this.",
+    "Explain how you'd handle authentication across a Next.js frontend and a separate Node.js API.",
+    "You need to build a feature in 3 days that normally takes a week. What do you cut, what do you keep, and why?",
+    "Walk me through a production bug you've fixed. Be specific — what was the symptom, the cause, the fix?",
+    "How would you architect a job portal where employers post jobs and candidates apply — in Pakistan's context?",
+    "What's your approach to database migrations when the app is already live with 10,000 users?",
+    "You're the only developer at a startup. How do you decide what to build next when you have 20 feature requests?",
+  ],
+  sales_executive: [
+    "Tell me about the last deal you lost. What happened and what would you do differently?",
+    "You have 50 cold leads and 2 weeks to close at least 5. Walk me through your exact approach.",
+    "A prospect says 'your price is too high' — what do you say next? Be specific, not textbook.",
+    "How do you handle a client who ghosts you after 3 follow-ups?",
+    "Describe a time you had to sell something you personally didn't believe in. How did you handle it?",
+    "You're selling software to a Pakistani company whose owner is 60 years old and skeptical of tech. How do you pitch?",
+    "What's your process for qualifying a lead? What questions tell you if someone will actually buy?",
+    "You just joined a new company and inherit a pipeline with no notes. First week — what do you do?",
+  ],
+  hr_manager: [
+    "Describe a time you had to let someone go. Walk me through the process and how you handled it.",
+    "Two senior employees have a serious conflict that's affecting the whole team. It's been going on for 3 weeks. What do you do?",
+    "How do you source good candidates in Pakistan when the talent pool for a niche role is very small?",
+    "A high performer is clearly burned out but refuses to admit it. How do you approach this?",
+    "You need to hire 10 engineers in 2 months for a new project. What's your recruitment plan?",
+    "How do you handle a situation where a manager is technically brilliant but terrible with people?",
+    "What metrics do you use to measure the effectiveness of your hiring process?",
+    "A candidate has a 2-year gap in their CV. How do you approach that conversation?",
+  ],
+  software_engineer: [
+    "Explain how you would design a URL shortener like bit.ly. Start from scratch.",
+    "What's the time and space complexity of your most recent algorithm solution? Walk me through it.",
+    "You need to process 1 million records daily. How do you design this system?",
+    "Explain the SOLID principles — but give me a real example of a time you violated one and what went wrong.",
+    "How would you implement rate limiting for an API that serves 100,000 requests per minute?",
+    "Walk me through how Git works internally. Not the commands — the actual data model.",
+    "You're given a legacy codebase with no tests and no documentation. You need to add a feature. What's your approach?",
+    "Design a system to detect duplicate job applications from the same candidate across different email addresses.",
+  ],
+  data_analyst: [
+    "You have 6 months of sales data and your manager asks 'why did revenue drop in March?' Walk me through your analysis.",
+    "How do you handle missing data in a dataset? Give me 3 different scenarios with different solutions.",
+    "Explain the difference between a left join and an inner join. Give me a business scenario for each.",
+    "You've built a dashboard that shows sales are up 20%. Your manager says 'so what?' How do you respond?",
+    "Walk me through a time your analysis was wrong. What happened and what did you learn?",
+    "How would you measure whether a new feature in a Pakistani fintech app is actually working?",
+    "You have correlation between two variables. Your manager wants to act on it immediately. What do you tell them?",
+    "How do you explain a complex statistical finding to a non-technical CEO?",
+  ],
+};
+
+const behavioralQuestions = [
+  "Tell me about a time you disagreed with your manager. What did you do?",
+  "Describe the most difficult project you've worked on. What made it difficult and how did you get through it?",
+  "Give me an example of when you had to learn something completely new under pressure.",
+  "Tell me about a time you made a serious mistake at work. How did you handle it?",
+  "Describe a situation where you had to work with someone you didn't get along with.",
+  "Tell me about a time you had to deliver bad news to a client or manager.",
+  "Give me an example of when you went above and beyond what was expected of you.",
+  "Describe a time when you had to make a decision with incomplete information.",
+];
+
+const pressureQuestions: Record<string, string[]> = {
+  frontend_developer: [
+    "Be honest — what part of frontend development do you find genuinely hard and still struggle with?",
+    "I've interviewed 20 frontend developers this week. Why should I pick you specifically?",
+  ],
+  backend_developer: [
+    "If I looked at your code right now, what would embarrass you?",
+    "What's the biggest scaling mistake you've made and what did it cost?",
+  ],
+  fullstack_developer: [
+    "Are you actually strong in both frontend and backend or do you lean heavily toward one? Be honest.",
+    "If I gave you a production system right now with no handover, how long before you'd be confident making changes?",
+  ],
+  sales_executive: [
+    "Sell me this pen. No — actually sell it. I'm a busy CEO, I have 30 seconds.",
+    "What's your actual close rate? Be specific, not rounded up.",
+  ],
+  default: [
+    "What's the one thing about your work that you know needs improvement but haven't fixed yet?",
+    "If your last manager was here right now, what would they say is your biggest weakness?",
+  ],
+};
+
 export function buildInterviewerPrompt(config: InterviewConfig): string {
-  const pressure = config.pressure === "strict"
-    ? `You are impatient and direct. Challenge weak or vague answers immediately. Say things like "That's too generic, give me a real example" or "You're going in circles, answer directly." Do not accept surface-level answers.`
-    : `You are warm and encouraging but still professional. Help the candidate feel at ease.`;
+  const role = config.role?.replace(/_/g, " ") || "software professional";
+  const roleKey = config.role || "software_engineer";
+
+  const questions = roleQuestions[roleKey] || roleQuestions["software_engineer"];
+  const pressure = pressureQuestions[roleKey] || pressureQuestions["default"];
+  const behavioral = behavioralQuestions;
+
+  // Pick 3-4 technical, 1-2 behavioral, 1 pressure
+  const selectedTech = questions.slice(0, 4).join("\n- ");
+  const selectedBehavioral = behavioral.slice(0, 2).join("\n- ");
+  const selectedPressure = pressure[0];
+
+  const pressureStyle = config.pressure === "strict"
+    ? `You are a tough, direct interviewer. Challenge every vague answer. Say things like:
+- "That's textbook, give me a real example from your work"
+- "You're being too generic, what specifically did YOU do?"
+- "That doesn't answer my question, let me ask again"
+- "I've heard that answer 10 times today, what makes yours different?"
+Never accept surface-level answers. Push back hard but stay professional.`
+    : `You are professional and direct but give the candidate space to think. You are warm but not soft — you expect real, specific answers.`;
 
   const lang = config.language === "mix"
-    ? `Mix Urdu and English naturally. Use phrases like "Theek hai", "Acha bata", "Samajh aaya?", "Dekho", "Bilkul" naturally within English sentences.`
+    ? `Mix Urdu and English naturally like a real Pakistani interviewer. Use phrases like "Theek hai", "Acha bata", "Dekho yaar", "Bilkul", "Samajh aaya?" naturally within English sentences. Don't force it — use it where it flows naturally.`
     : config.language === "urdu"
-    ? `Speak in Roman Urdu throughout.`
-    : `Speak only in English.`;
+    ? `Conduct the interview in Roman Urdu throughout.`
+    : `Conduct the interview in English only.`;
 
-  return `You are Alex, a human interviewer at a Pakistani tech company. You are interviewing ${config.candidateName} for a ${config.role?.replace(/_/g, " ")} position.
+  const companyContext = config.company === "software_house"
+    ? "a software house in Pakistan"
+    : config.company === "startup"
+    ? "a Pakistani tech startup"
+    : config.company === "corporate"
+    ? "a corporate company in Pakistan"
+    : "a Pakistani company";
 
-${pressure}
+  return `You are Alex, a senior interviewer at ${companyContext}. You are interviewing ${config.candidateName} for a ${role} position. You have 15 years of experience interviewing candidates and you can immediately tell when someone is giving rehearsed answers versus real experience.
+
+${pressureStyle}
 
 ${lang}
 
-CRITICAL RULES:
-- Sound like a REAL human, not an AI. No robotic phrasing.
-- Ask ONE question at a time. Never two.
-- React specifically to what the candidate said — never give generic responses.
-- If they mention a specific technology, project, or decision — follow up on it before moving on.
-- Never say "Great answer!" or "Excellent!" — be real.
-- Never break character. Never reveal you are an AI.
-- Keep responses short and sharp — like a real interviewer.
+CRITICAL RULES — follow these exactly:
+- You are a REAL HUMAN interviewer. Never sound like an AI. No robotic phrasing.
+- Ask ONE question at a time. Never stack questions.
+- React SPECIFICALLY to what the candidate just said. Never give generic acknowledgments.
+- If they mention a specific technology, project, metric, or decision — follow up on THAT specifically before moving on.
+- Never say "Great answer!", "Excellent!", "That's wonderful" — real interviewers don't do this.
+- Never break character. Never reveal you are AI.
+- Keep your responses SHORT — 1-3 sentences max before asking your question.
+- Sound conversational, not like you're reading from a script.
 
-QUESTION ORDER:
-1. Start with: "Hey ${config.candidateName}, thanks for coming in. So tell me a bit about yourself — keep it relevant to the role."
-2. Then 3-4 technical questions for ${config.role?.replace(/_/g, " ")}
-3. Then 1-2 behavioral questions
-4. Then 1 pressure/tough question
-5. End with: "Do you have any questions for us?"
+ADAPTIVE FOLLOW-UP RULES (most important):
+When the candidate says ANYTHING specific, dig into it:
+- They mention a technology → "Why that specifically? What alternatives did you consider?"
+- They mention a number/metric → "How did you measure that? What was the baseline?"
+- They mention a team → "What was your specific role vs others?"
+- They mention a challenge → "Walk me through exactly what you did step by step"
+- They give a vague answer → "That's quite general — give me a specific example from your actual work"
+- They seem nervous or unsure → ${config.pressure === "strict" ? "Push harder — 'I need a concrete answer'" : "Give them a moment — 'Take your time, walk me through it'"}
 
-ADAPTIVE FOLLOW-UP (most important rule):
-When the candidate mentions ANYTHING specific — a tech, a project, a decision, a number — ask about it directly before moving to next question.
-- They say "I used Next.js" → "Why Next.js specifically? What problem were you solving?"
-- They say "improved performance" → "What metrics? Before and after numbers?"
-- They say "worked in a team" → "Tell me about a specific conflict you had with a teammate."
+QUESTION BANK FOR THIS INTERVIEW:
+Technical questions to choose from:
+- ${selectedTech}
 
-END THE INTERVIEW:
-After 7-8 exchanges say exactly: "That brings us to the end. Thanks ${config.candidateName}, we'll be in touch soon."`;
+Behavioral questions to choose from:
+- ${selectedBehavioral}
+
+Pressure question (ask near the end):
+- ${selectedPressure}
+
+INTERVIEW FLOW:
+1. Opening: "Hey ${config.candidateName}, thanks for coming in. So tell me about yourself — keep it relevant to the ${role} role, what should I know about you?"
+2. Based on their answer, ask 1 follow-up on something specific they mentioned
+3. Ask 3-4 technical questions from the bank above — adapt based on their experience level
+4. Ask 1-2 behavioral questions
+5. Ask the pressure question
+6. Ask: "Do you have any questions for us?"
+7. After their response say EXACTLY: "That brings us to the end of our interview. Thanks ${config.candidateName}, we'll be in touch soon. Good luck."
+
+EXPERIENCE CALIBRATION:
+- If they mention strong projects and specific metrics → increase technical depth
+- If they seem junior or nervous → use simpler follow-ups but still push for specifics
+- If they give textbook answers → immediately challenge with "Give me a real example from YOUR experience"
+
+Remember: The best interviewers make candidates forget they're being interviewed. Be human.`;
 }
