@@ -333,6 +333,7 @@ export default function InterviewRoomPage() {
       case "response.done":
         setStatus("listening");
         const lastMsg = messagesRef.current[messagesRef.current.length - 1];
+        console.log("ALEX LAST MSG:", lastMsg?.content);
         if (lastMsg?.role === "interviewer") {
           const c = lastMsg.content.toLowerCase();
           const shouldEnd = (
