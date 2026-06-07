@@ -332,27 +332,32 @@ export default function InterviewRoomPage() {
 
       case "response.done":
         setStatus("listening");
-        // Check if interview should end
         const lastMsg = messagesRef.current[messagesRef.current.length - 1];
         if (lastMsg?.role === "interviewer") {
-          const content = lastMsg.content.toLowerCase();
-          if (
-            content.includes("we'll be in touch") || 
-            content.includes("end of our interview") ||
-            content.includes("brings us to the end") ||
-            content.includes("that concludes") ||
-            content.includes("end of the interview") ||
-            content.includes("thank you for your time") ||
-            content.includes("that's all the questions") ||
-            content.includes("good luck") ||
-            content.includes("all the best") ||
-            content.includes("wish you the best") ||
-            content.includes("have a great") ||
-            content.includes("take care")
-          ) {
-            setTimeout(() => endInterview(), 3000);
-          }
+          const c = lastMsg.content.toLowerCase();
+          const shouldEnd = (
+            c.includes("we'll be in touch") || 
+            c.includes("end of our interview") ||
+            c.includes("brings us to the end") ||
+            c.includes("that concludes") ||
+            c.includes("end of the interview") ||
+            c.includes("thank you for your time") ||
+            c.includes("that's all the questions") ||
+            c.includes("good luck") ||
+            c.includes("all the best") ||
+            c.includes("wish you the best") ||
+            c.includes("have a great") ||
+            c.includes("take care") ||
+            c.includes("best of luck") ||
+            c.includes("we will be in touch") ||
+            c.includes("i'll let you know") ||
+            c.includes("that wraps up")
+          );
+          if (shouldEnd) setTimeout(() => endInterview(), 3000);
         }
+        // Force end after 16 interviewer messages
+        const interviewerMsgs = messagesRef.current.filter(m => m.role === "interviewer").length;
+        if (interviewerMsgs >= 10) setTimeout(() => endInterview(), 4000);
         break;
     }
   }, []);
@@ -520,11 +525,8 @@ export default function InterviewRoomPage() {
 
         {/* Chat */}
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"14px 24px 6px",gap:12}}>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"10px 24px 6px",gap:8}}>
             <AlexAvatar status={status} isUserSpeaking={isRecording} />
-            {Array.from({length:50}).map((_,i)=>(
-              <div key={i} ref={el=>{if(el)barsRef.current[i]=el}} style={{width:3,borderRadius:9999,background:"#00f0ff",height:8,transition:"height 0.15s ease"}}/>
-            ))}
           </div>
 
           <div style={{textAlign:"center",marginBottom:6}}>
