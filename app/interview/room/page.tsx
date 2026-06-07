@@ -335,11 +335,21 @@ export default function InterviewRoomPage() {
         const lastMsg = messagesRef.current[messagesRef.current.length - 1];
         if (lastMsg?.role === "interviewer") {
           const content = lastMsg.content.toLowerCase();
-          if (content.includes("we'll be in touch") || 
-              content.includes("end of our interview") ||
-              content.includes("brings us to the end") ||
-              content.includes("that concludes")) {
-            endInterview();
+          if (
+            content.includes("we'll be in touch") || 
+            content.includes("end of our interview") ||
+            content.includes("brings us to the end") ||
+            content.includes("that concludes") ||
+            content.includes("end of the interview") ||
+            content.includes("thank you for your time") ||
+            content.includes("that's all the questions") ||
+            content.includes("good luck") ||
+            content.includes("all the best") ||
+            content.includes("wish you the best") ||
+            content.includes("have a great") ||
+            content.includes("take care")
+          ) {
+            setTimeout(() => endInterview(), 3000);
           }
         }
         break;

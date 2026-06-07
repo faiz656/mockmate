@@ -7,7 +7,7 @@ export async function POST(req: Request) {
     type: "realtime",
     model: "gpt-realtime-2",
     audio: {
-      output: { voice: "nova" }
+      output: { voice: "alloy" }
     },
     instructions: systemPrompt,
   });
