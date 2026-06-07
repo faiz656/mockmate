@@ -224,16 +224,16 @@ export default function InterviewRoomPage() {
     if (!SR) return;
     stopListening();
     const recognition = new SR();
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = "en-US";
-    recognition.maxAlternatives = 3;
+    recognition.maxAlternatives = 1;
     recognitionRef.current = recognition;
     recognition.onstart = () => setIsRecording(true);
     recognition.onend = () => {
       setIsRecording(false);
       setVoiceTranscript("");
-      if (!isBusyRef.current) setTimeout(() => startListening(), 400);
+      if (!isBusyRef.current) setTimeout(() => startListening(), 1500);
     };
     recognition.onresult = (event: any) => {
       let interim = "", final = "";
@@ -291,7 +291,7 @@ export default function InterviewRoomPage() {
     // Only continue if not interrupted
     if (!interruptedRef.current) {
       setStatus("listening");
-      setTimeout(() => startListening(), 300);
+      setTimeout(() => startListening(), 1500);
     }
   }, [startListening, interruptAlex]);
 
@@ -513,7 +513,7 @@ export default function InterviewRoomPage() {
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"14px 24px 6px",gap:2}}>
             {Array.from({length:50}).map((_,i)=>(
-              <div key={i} ref={el=>{if(el)barsRef.current[i]=el}} style={{width:3,borderRadius:9999,background:"#00f0ff",height:8,transition:"height 0.05s ease,background 0.1s"}}/>
+              <div key={i} ref={el=>{if(el)barsRef.current[i]=el}} style={{width:3,borderRadius:9999,background:"#00f0ff",height:8,transition:"height 0.2s ease,background 0.3s"}}/>
             ))}
           </div>
 
