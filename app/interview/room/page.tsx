@@ -19,6 +19,7 @@ export default function InterviewRoomPage() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const animationRef = useRef<number>();
   const [status, setStatus] = useState<"connecting"|"listening"|"thinking"|"speaking">("connecting");
   const [isRecording, setIsRecording] = useState(false);
   const [voiceTranscript, setVoiceTranscript] = useState("");
@@ -224,7 +225,7 @@ export default function InterviewRoomPage() {
     if (!SR) return;
     stopListening();
     const recognition = new SR();
-    recognition.continuous = true;
+    recognition.continuous = false;
     recognition.interimResults = true;
     recognition.lang = "en-US";
     recognition.maxAlternatives = 1;
@@ -235,23 +236,34 @@ export default function InterviewRoomPage() {
       setVoiceTranscript("");
       if (!isBusyRef.current) setTimeout(() => startListening(), 1500);
     };
+    let accumulatedFinal = "";
+    let silenceTimer: any = null;
     recognition.onresult = (event: any) => {
-      let interim = "", final = "";
+      let interim = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const t = event.results[i][0].transcript;
-        if (event.results[i].isFinal) final += t;
+        if (event.results[i].isFinal) accumulatedFinal += " " + t;
         else interim += t;
       }
-      if (interim) {
-        setVoiceTranscript(interim);
-        // Interrupt Alex as soon as user starts speaking
+      const displayText = (accumulatedFinal + " " + interim).trim();
+      if (displayText) {
+        setVoiceTranscript(displayText);
         if (isPlayingRef.current) interruptAlex();
       }
-      if (final.trim()) {
-        setVoiceTranscript("");
-        stopListening();
-        interruptAlex();
-        sendMessage(final.trim());
+      // Clear any existing silence timer
+      if (silenceTimer) clearTimeout(silenceTimer);
+      // Wait 1.5 seconds of silence before sending
+      if (accumulatedFinal.trim()) {
+        silenceTimer = setTimeout(() => {
+          const toSend = accumulatedFinal.trim();
+          if (toSend) {
+            setVoiceTranscript("");
+            accumulatedFinal = "";
+            stopListening();
+            interruptAlex();
+            sendMessage(toSend);
+          }
+        }, 1500);
       }
     };
     recognition.onerror = (e: any) => {
@@ -262,9 +274,9 @@ export default function InterviewRoomPage() {
   }, [stopListening, interruptAlex]);
 
   const speakText = useCallback(async (text: string): Promise<void> => {
-    setStatus("speaking");
     isPlayingRef.current = true;
     interruptedRef.current = false;
+    setStatus("speaking");
     try {
       const res = await fetch("/api/interview/speak", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -513,7 +525,7 @@ export default function InterviewRoomPage() {
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"14px 24px 6px",gap:2}}>
             {Array.from({length:50}).map((_,i)=>(
-              <div key={i} ref={el=>{if(el)barsRef.current[i]=el}} style={{width:3,borderRadius:9999,background:"#00f0ff",height:8,transition:"height 0.2s ease,background 0.3s"}}/>
+              <div key={i} ref={el=>{if(el)barsRef.current[i]=el}} style={{width:3,borderRadius:9999,background:"#00f0ff",height:8,transition:"height 0.15s ease"}}/>
             ))}
           </div>
 
