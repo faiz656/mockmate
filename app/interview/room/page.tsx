@@ -1,4 +1,5 @@
 "use client";
+import AlexAvatar from "@/components/AlexAvatar";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { buildInterviewerPrompt } from "@/lib/prompts/interviewer";
@@ -519,7 +520,8 @@ export default function InterviewRoomPage() {
 
         {/* Chat */}
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"14px 24px 6px",gap:2}}>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"14px 24px 6px",gap:12}}>
+            <AlexAvatar status={status} isUserSpeaking={isRecording} />
             {Array.from({length:50}).map((_,i)=>(
               <div key={i} ref={el=>{if(el)barsRef.current[i]=el}} style={{width:3,borderRadius:9999,background:"#00f0ff",height:8,transition:"height 0.15s ease"}}/>
             ))}
