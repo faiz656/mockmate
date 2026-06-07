@@ -332,34 +332,33 @@ export default function InterviewRoomPage() {
 
       case "response.done":
         setStatus("listening");
-        // Get transcript from event directly
-        const outputText = event.response?.output
-          ?.filter((o: any) => o.type === "message")
-          ?.map((o: any) => o.content?.filter((c: any) => c.type === "audio" || c.type === "text")?.map((c: any) => c.transcript || c.text || "").join(" "))
-          ?.join(" ") || "";
-        console.log("ALEX SAID:", outputText);
-        const c2 = outputText.toLowerCase();
-        const shouldEnd2 = c2.includes("we'll be in touch") ||
-          c2.includes("end of our interview") ||
-          c2.includes("brings us to the end") ||
-          c2.includes("that concludes") ||
-          c2.includes("end of the interview") ||
-          c2.includes("thank you for your time") ||
-          c2.includes("that's all the questions") ||
-          c2.includes("good luck") ||
-          c2.includes("all the best") ||
-          c2.includes("best of luck") ||
-          c2.includes("we will be in touch") ||
-          c2.includes("take care") ||
-          c2.includes("that wraps up") ||
-          c2.includes("wish you the best") ||
-          c2.includes("have a great day") ||
-          c2.includes("have a great time");
-        if (shouldEnd2) { console.log("ENDING INTERVIEW"); setTimeout(() => endInterview(), 3000); }
-        // Force end after enough exchanges
-        const totalMsgs2 = messagesRef.current.length;
-        const candidateMsgs2 = messagesRef.current.filter(m => m.role === "candidate").length;
-        if (totalMsgs2 >= 18 && candidateMsgs2 >= 7) setTimeout(() => endInterview(), 4000);
+        // Use the last interviewer message already saved to transcript
+        setTimeout(() => {
+          const msgs = messagesRef.current;
+          const lastInterviewer = [...msgs].reverse().find(m => m.role === "interviewer");
+          const c2 = (lastInterviewer?.content || "").toLowerCase();
+          console.log("ALEX LAST:", c2.substring(0, 100));
+          const shouldEnd2 = c2.includes("we'll be in touch") ||
+            c2.includes("end of our interview") ||
+            c2.includes("brings us to the end") ||
+            c2.includes("that concludes") ||
+            c2.includes("end of the interview") ||
+            c2.includes("thank you for your time") ||
+            c2.includes("that's all the questions") ||
+            c2.includes("good luck") ||
+            c2.includes("all the best") ||
+            c2.includes("best of luck") ||
+            c2.includes("we will be in touch") ||
+            c2.includes("take care") ||
+            c2.includes("that wraps up") ||
+            c2.includes("wish you the best") ||
+            c2.includes("have a great day") ||
+            c2.includes("have a great time");
+          if (shouldEnd2) { console.log("ENDING NOW"); endInterview(); }
+          // Force end after enough exchanges
+          const candidateMsgs2 = msgs.filter(m => m.role === "candidate").length;
+          if (msgs.length >= 18 && candidateMsgs2 >= 7) endInterview();
+        }, 1000);
         break;
     }
   }, []);
