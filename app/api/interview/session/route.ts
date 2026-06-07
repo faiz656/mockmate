@@ -24,14 +24,15 @@ export async function POST(req: Request) {
     body: fd,
   });
 
+  const responseText = await response.text();
+  console.log("OpenAI Realtime response status:", response.status);
+  console.log("OpenAI Realtime response:", responseText);
+
   if (!response.ok) {
-    const err = await response.text();
-    console.error("Realtime error:", err);
-    return NextResponse.json({ error: err }, { status: response.status });
+    return NextResponse.json({ error: responseText }, { status: response.status });
   }
 
-  const sdpAnswer = await response.text();
-  return new NextResponse(sdpAnswer, {
+  return new NextResponse(responseText, {
     headers: { "Content-Type": "application/sdp" },
   });
 }

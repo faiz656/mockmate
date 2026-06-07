@@ -242,7 +242,7 @@ export default function ResultsPage() {
             <h2 style={{ fontSize: 16, fontWeight: 600, fontFamily: "Geist, sans-serif", color: "#dbfcff", marginBottom: 24 }}>📈 Score Breakdown</h2>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {scoreItems.map(({ key, label }) => {
-                const score = (feedback.scores as unknown as Record<string, number>)[key] ?? 0;
+                const score = (feedback?.scores as unknown as Record<string, number>)?.[key] ?? 0;
                 return (
                   <div key={key}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
