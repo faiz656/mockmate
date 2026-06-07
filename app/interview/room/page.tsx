@@ -16,39 +16,37 @@ type PermissionState = "pending" | "requesting" | "granted" | "denied";
 export default function InterviewRoomPage() {
   const router = useRouter();
   const [messages, setMessages] = useState<TranscriptEntry[]>([]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
   const [elapsed, setElapsed] = useState(0);
-  const animationRef = useRef<number>();
   const [status, setStatus] = useState<"connecting"|"listening"|"thinking"|"speaking">("connecting");
-  const [isRecording, setIsRecording] = useState(false);
-  const [voiceTranscript, setVoiceTranscript] = useState("");
   const [permission, setPermission] = useState<PermissionState>("pending");
   const [permError, setPermError] = useState("");
   const [faceCount, setFaceCount] = useState(1);
   const [proctoringFlags, setProctoringFlags] = useState<ProctoringFlag[]>([]);
   const [tabSwitches, setTabSwitches] = useState(0);
   const [proctoringWarning, setProctoringWarning] = useState("");
+  const [connected, setConnected] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout>();
   const startRef = useRef(Date.now());
   const barsRef = useRef<HTMLDivElement[]>([]);
   const sessionIdRef = useRef<string | null>(null);
-  const recognitionRef = useRef<any>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const isPlayingRef = useRef(false);
-  const isBusyRef = useRef(false);
-  const configRef = useRef<InterviewConfig | null>(null);
-  const messagesRef = useRef<TranscriptEntry[]>([]);
-  const startedRef = useRef(false);
   const streamRef = useRef<MediaStream | null>(null);
   const flagsRef = useRef<ProctoringFlag[]>([]);
   const noFaceTimerRef = useRef<NodeJS.Timeout>();
-  const interruptedRef = useRef(false);
+  const pcRef = useRef<RTCPeerConnection | null>(null);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
+  const dcRef = useRef<RTCDataChannel | null>(null);
+  const configRef = useRef<InterviewConfig | null>(null);
+  const messagesRef = useRef<TranscriptEntry[]>([]);
+  const statusRef = useRef(status);
+  const isRecordingRef = useRef(false);
+  const [isRecording, setIsRecording] = useState(false);
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
   useEffect(() => { flagsRef.current = proctoringFlags; }, [proctoringFlags]);
+  useEffect(() => { statusRef.current = status; }, [status]);
+  useEffect(() => { isRecordingRef.current = isRecording; }, [isRecording]);
 
   const addFlag = useCallback((type: ProctoringFlag["type"], message: string) => {
     const flag: ProctoringFlag = { type, timestamp: Date.now(), message };
@@ -56,18 +54,6 @@ export default function InterviewRoomPage() {
     flagsRef.current = [...flagsRef.current, flag];
     setProctoringWarning(message);
     setTimeout(() => setProctoringWarning(""), 4000);
-  }, []);
-
-  // Interrupt Alex immediately
-  const interruptAlex = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = "";
-      audioRef.current = null;
-    }
-    isPlayingRef.current = false;
-    interruptedRef.current = true;
-    setStatus("listening");
   }, []);
 
   useEffect(() => {
@@ -80,6 +66,26 @@ export default function InterviewRoomPage() {
     document.addEventListener("visibilitychange", handleVisibility);
     return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, [addFlag, permission]);
+
+  // Bars animation - no React state dependency
+  useEffect(() => {
+    let raf: number;
+    const animate = () => {
+      const s = statusRef.current;
+      const rec = isRecordingRef.current;
+      barsRef.current.forEach((bar, i) => {
+        if (!bar) return;
+        const base = rec ? 22 : s==="speaking" ? 30 : s==="thinking" ? 5 : 8;
+        const wave = Math.sin(Date.now()/160+i/1.8)*(s==="speaking"?26:rec?18:5);
+        bar.style.height = `${Math.max(3,base+wave)}px`;
+        bar.style.background = rec ? "#f95e14" : "#00f0ff";
+        bar.style.opacity = s==="thinking" ? "0.25" : "0.85";
+      });
+      raf = requestAnimationFrame(animate);
+    };
+    animate();
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   const requestPermissions = async () => {
     setPermission("requesting");
@@ -94,8 +100,8 @@ export default function InterviewRoomPage() {
     } catch (e: any) {
       setPermission("denied");
       setPermError(e.name === "NotAllowedError"
-        ? "Access denied. Click the camera icon in your browser address bar and allow access."
-        : "Could not access camera/microphone: " + e.message);
+        ? "Access denied. Allow camera and microphone in browser settings."
+        : "Error: " + e.message);
     }
   };
 
@@ -124,7 +130,7 @@ export default function InterviewRoomPage() {
         if (count === 0) {
           if (!noFaceTimerRef.current) {
             noFaceTimerRef.current = setTimeout(() => {
-              addFlag("no_face", "Face not visible — stay in frame");
+              addFlag("no_face", "Face not visible");
               noFaceTimerRef.current = undefined;
             }, 3000);
           }
@@ -156,6 +162,7 @@ export default function InterviewRoomPage() {
     } catch (e) { console.error("Face detection:", e); }
   };
 
+  // Start WebRTC connection after permissions
   useEffect(() => {
     if (permission !== "granted") return;
     const stored = localStorage.getItem("interview_config");
@@ -164,16 +171,18 @@ export default function InterviewRoomPage() {
     configRef.current = cfg;
     startRef.current = Date.now();
     timerRef.current = setInterval(() => setElapsed(Math.floor((Date.now()-startRef.current)/1000)), 1000);
-    createSessionInDB(cfg).then(() => {
-      if (!startedRef.current) { startedRef.current = true; startInterview(cfg); }
-    });
+    createSessionInDB(cfg).then(() => startWebRTC(cfg));
     return () => {
       clearInterval(timerRef.current);
-      recognitionRef.current?.abort();
-      if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ""; }
-      streamRef.current?.getTracks().forEach(t => t.stop());
+      stopEverything();
     };
   }, [permission]);
+
+  const stopEverything = () => {
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    pcRef.current?.close();
+    if (audioElRef.current) { audioElRef.current.pause(); audioElRef.current.src = ""; }
+  };
 
   const createSessionInDB = async (cfg: InterviewConfig) => {
     try {
@@ -193,201 +202,172 @@ export default function InterviewRoomPage() {
     } catch (e) { console.error(e); }
   };
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  const startWebRTC = async (cfg: InterviewConfig) => {
+    setStatus("connecting");
+    try {
+      const pc = new RTCPeerConnection();
+      pcRef.current = pc;
 
-  const statusRef = useRef(status);
-  const isRecordingRef = useRef(isRecording);
-  useEffect(() => { statusRef.current = status; }, [status]);
-  useEffect(() => { isRecordingRef.current = isRecording; }, [isRecording]);
-  useEffect(() => {
-    let raf: number;
-    const animate = () => {
-      const s = statusRef.current;
-      const rec = isRecordingRef.current;
-      barsRef.current.forEach((bar, i) => {
-        if (!bar) return;
-        const base = rec ? 22 : s==="speaking" ? 30 : s==="thinking" ? 5 : 8;
-        const wave = Math.sin(Date.now()/160+i/1.8)*(s==="speaking"?26:rec?18:5);
-        bar.style.height = `${Math.max(3,base+wave)}px`;
-        bar.style.background = rec ? "#f95e14" : "#00f0ff";
-        bar.style.opacity = s==="thinking" ? "0.25" : "0.85";
-      });
-      raf = requestAnimationFrame(animate);
-    };
-    animate();
-    return () => cancelAnimationFrame(raf);
-  }, []);
+      // Play Alex's voice
+      const audioEl = document.createElement("audio");
+      audioEl.autoplay = true;
+      audioElRef.current = audioEl;
+      pc.ontrack = (e) => { audioEl.srcObject = e.streams[0]; };
 
-  const stopListening = useCallback(() => {
-    try { recognitionRef.current?.abort(); } catch {}
-    recognitionRef.current = null;
-    setIsRecording(false);
-    setVoiceTranscript("");
-  }, []);
+      // Add mic track
+      if (streamRef.current) {
+        const audioTrack = streamRef.current.getAudioTracks()[0];
+        pc.addTrack(audioTrack, streamRef.current);
+      }
 
-  const startListening = useCallback(() => {
-    if (isBusyRef.current) return;
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) return;
-    stopListening();
-    const recognition = new SR();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = "en-US";
-    recognition.maxAlternatives = 1;
-    recognitionRef.current = recognition;
-    recognition.onstart = () => setIsRecording(true);
-    recognition.onend = () => {
-      setIsRecording(false);
-      // Restart immediately unless busy - handles Windows cutting off
-      if (!isBusyRef.current && !isPlayingRef.current) {
-        setTimeout(() => startListening(), 300);
-      }
-    };
-    let accumulatedFinal = "";
-    let silenceTimer: any = null;
-    recognition.onresult = (event: any) => {
-      let interim = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const t = event.results[i][0].transcript;
-        if (event.results[i].isFinal) accumulatedFinal += " " + t;
-        else interim += t;
-      }
-      const displayText = (accumulatedFinal + " " + interim).trim();
-      if (displayText) {
-        setVoiceTranscript(displayText);
-        if (isPlayingRef.current) interruptAlex();
-      }
-      // Clear any existing silence timer
-      if (silenceTimer) clearTimeout(silenceTimer);
-      // Wait 1.5 seconds of silence before sending
-      if (accumulatedFinal.trim()) {
-        silenceTimer = setTimeout(() => {
-          const toSend = accumulatedFinal.trim();
-          if (toSend) {
-            setVoiceTranscript("");
-            accumulatedFinal = "";
-            stopListening();
-            interruptAlex();
-            sendMessage(toSend);
+      // Data channel for events
+      const dc = pc.createDataChannel("oai-events");
+      dcRef.current = dc;
+
+      dc.onopen = () => {
+        setConnected(true);
+        setStatus("listening");
+        // Send session config
+        dc.send(JSON.stringify({
+          type: "session.update",
+          session: {
+            instructions: buildInterviewerPrompt(cfg),
+            voice: "nova",
+            input_audio_transcription: { model: "whisper-1" },
+            turn_detection: {
+              type: "server_vad",
+              threshold: 0.5,
+              prefix_padding_ms: 300,
+              silence_duration_ms: 800,
+            },
           }
-        }, 1500);
-      }
-    };
-    recognition.onerror = (e: any) => {
-      if (e.error !== "aborted" && e.error !== "no-speech") console.error("Speech:", e.error);
-      setIsRecording(false);
-    };
-    try { recognition.start(); } catch {}
-  }, [stopListening, interruptAlex]);
+        }));
+        // Trigger Alex to speak first
+        setTimeout(() => {
+          dc.send(JSON.stringify({ type: "response.create" }));
+        }, 500);
+      };
 
-  const speakText = useCallback(async (text: string): Promise<void> => {
-    isPlayingRef.current = true;
-    interruptedRef.current = false;
-    setStatus("speaking");
-    try {
-      const res = await fetch("/api/interview/speak", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+      dc.onmessage = (e) => {
+        try {
+          const event = JSON.parse(e.data);
+          handleRealtimeEvent(event);
+        } catch {}
+      };
+
+      // Create SDP offer
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      // Send to our backend
+      const res = await fetch("/api/interview/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sdp: offer.sdp, systemPrompt: buildInterviewerPrompt(cfg) }),
       });
-      if (!res.ok) throw new Error("TTS error");
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      audioRef.current = audio;
 
-      // Start listening while Alex speaks so we can detect interruptions
-      setTimeout(() => {
-        if (isPlayingRef.current) startListening();
-      }, 500);
+      if (!res.ok) throw new Error("Failed to connect to OpenAI Realtime");
+      const sdpAnswer = await res.text();
+      await pc.setRemoteDescription({ type: "answer", sdp: sdpAnswer });
 
-      await new Promise<void>((resolve) => {
-        audio.onended = () => { URL.revokeObjectURL(url); isPlayingRef.current = false; resolve(); };
-        audio.onerror = () => { isPlayingRef.current = false; resolve(); };
-        audio.play().catch(() => { isPlayingRef.current = false; resolve(); });
-      });
-    } catch (e) { console.error("TTS:", e); isPlayingRef.current = false; }
-
-    // Only continue if not interrupted
-    if (!interruptedRef.current) {
+    } catch (e) {
+      console.error("WebRTC error:", e);
       setStatus("listening");
-      setTimeout(() => startListening(), 1500);
     }
-  }, [startListening, interruptAlex]);
-
-  const startInterview = async (cfg: InterviewConfig) => {
-    setStatus("thinking");
-    isBusyRef.current = true;
-    try {
-      const res = await fetch("/api/interview/chat", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: [], config: cfg, systemPrompt: buildInterviewerPrompt(cfg) }),
-      });
-      if (!res.ok) throw new Error(`Chat error ${res.status}`);
-      const data = await res.json();
-      const alexMsg: TranscriptEntry = { id: crypto.randomUUID(), role: "interviewer", content: data.reply, timestamp: Date.now() };
-      setMessages([alexMsg]);
-      messagesRef.current = [alexMsg];
-      isBusyRef.current = false;
-      await speakText(data.reply);
-    } catch (e) { console.error(e); isBusyRef.current = false; setStatus("listening"); startListening(); }
   };
 
-  const sendMessage = useCallback(async (text: string) => {
-    if (!text.trim() || isBusyRef.current || !configRef.current) return;
+  const handleRealtimeEvent = useCallback((event: any) => {
+    switch (event.type) {
+      case "input_audio_buffer.speech_started":
+        setIsRecording(true);
+        setStatus("listening");
+        break;
 
-    // Always interrupt Alex first
-    interruptAlex();
+      case "input_audio_buffer.speech_stopped":
+        setIsRecording(false);
+        setStatus("thinking");
+        break;
 
-    isBusyRef.current = true;
-    stopListening();
-
-    const userMsg: TranscriptEntry = { id: crypto.randomUUID(), role: "candidate", content: text.trim(), timestamp: Date.now() };
-    const updated = [...messagesRef.current, userMsg];
-    setMessages(updated); messagesRef.current = updated;
-    setInput(""); setLoading(true); setStatus("thinking");
-
-    try {
-      const res = await fetch("/api/interview/chat", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: updated, config: configRef.current, systemPrompt: buildInterviewerPrompt(configRef.current) }),
-      });
-      if (!res.ok) throw new Error(`Chat error ${res.status}`);
-      const data = await res.json();
-      const alexMsg: TranscriptEntry = { id: crypto.randomUUID(), role: "interviewer", content: data.reply, timestamp: Date.now() };
-      const final = [...updated, alexMsg];
-      setMessages(final); messagesRef.current = final;
-
-      if (data.sessionEnded) {
-        clearInterval(timerRef.current);
-        const dur = Math.floor((Date.now()-startRef.current)/1000);
-        if (sessionIdRef.current) {
-          try {
-            const supabase = createClient();
-            await supabase.from("sessions").update({
-              transcript: final, duration_seconds: dur, completed: true,
-              proctoring: { flags: flagsRef.current, tab_switches: tabSwitches, total_flags: flagsRef.current.length }
-            }).eq("id", sessionIdRef.current);
-          } catch {}
+      case "conversation.item.input_audio_transcription.completed":
+        if (event.transcript?.trim()) {
+          const userMsg: TranscriptEntry = {
+            id: crypto.randomUUID(),
+            role: "candidate",
+            content: event.transcript.trim(),
+            timestamp: Date.now(),
+          };
+          setMessages(prev => {
+            const updated = [...prev, userMsg];
+            messagesRef.current = updated;
+            return updated;
+          });
         }
-        // Stop camera before navigating
-        streamRef.current?.getTracks().forEach(t => t.stop());
-        localStorage.setItem("interview_transcript", JSON.stringify(final));
-        localStorage.setItem("interview_config_done", JSON.stringify(configRef.current));
-        isBusyRef.current = false; setLoading(false);
-        await speakText(data.reply);
-        setTimeout(() => router.push("/interview/results"), 500);
-        return;
-      }
-      isBusyRef.current = false; setLoading(false);
-      await speakText(data.reply);
-    } catch (e) {
-      console.error(e);
-      isBusyRef.current = false; setLoading(false);
-      setStatus("listening");
-      startListening();
+        break;
+
+      case "response.audio_transcript.delta":
+        // Alex is speaking - update status
+        setStatus("speaking");
+        break;
+
+      case "response.audio_transcript.done":
+        if (event.transcript?.trim()) {
+          const alexMsg: TranscriptEntry = {
+            id: crypto.randomUUID(),
+            role: "interviewer",
+            content: event.transcript.trim(),
+            timestamp: Date.now(),
+          };
+          setMessages(prev => {
+            const updated = [...prev, alexMsg];
+            messagesRef.current = updated;
+            return updated;
+          });
+        }
+        break;
+
+      case "response.audio.done":
+        setStatus("listening");
+        break;
+
+      case "response.done":
+        setStatus("listening");
+        // Check if interview should end
+        const lastMsg = messagesRef.current[messagesRef.current.length - 1];
+        if (lastMsg?.role === "interviewer") {
+          const content = lastMsg.content.toLowerCase();
+          if (content.includes("we'll be in touch") || 
+              content.includes("end of our interview") ||
+              content.includes("brings us to the end") ||
+              content.includes("that concludes")) {
+            endInterview();
+          }
+        }
+        break;
     }
-  }, [speakText, startListening, stopListening, interruptAlex, tabSwitches]);
+  }, []);
+
+  const endInterview = async () => {
+    clearInterval(timerRef.current);
+    const dur = Math.floor((Date.now()-startRef.current)/1000);
+    const finalMessages = messagesRef.current;
+    if (sessionIdRef.current) {
+      try {
+        const supabase = createClient();
+        await supabase.from("sessions").update({
+          transcript: finalMessages,
+          duration_seconds: dur,
+          completed: true,
+          proctoring: { flags: flagsRef.current, tab_switches: tabSwitches, total_flags: flagsRef.current.length }
+        }).eq("id", sessionIdRef.current);
+      } catch {}
+    }
+    localStorage.setItem("interview_transcript", JSON.stringify(finalMessages));
+    localStorage.setItem("interview_config_done", JSON.stringify(configRef.current));
+    stopEverything();
+    router.push("/interview/results");
+  };
+
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
   const formatTime = (s: number) => `${Math.floor(s/60).toString().padStart(2,"0")}:${(s%60).toString().padStart(2,"0")}`;
   const formatMsgTime = (ts: number) => new Date(ts).toLocaleTimeString("en-US",{hour12:false,hour:"2-digit",minute:"2-digit",second:"2-digit"});
@@ -403,12 +383,12 @@ export default function InterviewRoomPage() {
           <div style={{width:80,height:80,borderRadius:"50%",background:"linear-gradient(135deg,#00dbe9,#7000ff)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:36,margin:"0 auto 24px",boxShadow:"0 0 40px rgba(0,219,233,0.3)"}}>🎥</div>
           <h1 style={{fontSize:28,fontWeight:700,fontFamily:"Geist, sans-serif",color:"#fff",marginBottom:12}}>Camera & Mic Required</h1>
           <p style={{fontSize:15,color:"#849495",lineHeight:1.6,marginBottom:32}}>
-            This is a proctored interview. Both camera and microphone are required to continue.
+            This is a proctored interview. Camera and microphone are required.
           </p>
           <div style={{background:"rgba(22,27,34,0.8)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:16,padding:24,marginBottom:24,textAlign:"left"}}>
             {[
               {icon:"📹",title:"Camera",desc:"Identity verification and proctoring"},
-              {icon:"🎤",title:"Microphone",desc:"Capture your voice answers"},
+              {icon:"🎤",title:"Microphone",desc:"AI listens to your voice in real time"},
               {icon:"🔒",title:"Privacy",desc:"Video analyzed in real-time, not stored"},
             ].map(({icon,title,desc})=>(
               <div key={title} style={{display:"flex",gap:14,alignItems:"flex-start",marginBottom:16}}>
@@ -456,9 +436,9 @@ export default function InterviewRoomPage() {
             <span style={{fontSize:20,fontWeight:700,color:"#dbfcff",letterSpacing:"-0.02em",fontFamily:"Geist, sans-serif"}}>MockMate</span>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <div style={{width:7,height:7,borderRadius:"50%",background:isRecording?"#f95e14":status==="speaking"?"#00dbe9":"#849495",animation:"pulse 2s infinite"}}/>
-            <span style={{fontSize:12,fontFamily:"JetBrains Mono, monospace",color:isRecording?"#f95e14":status==="speaking"?"#00dbe9":"#849495"}}>
-              {isRecording?"RECORDING":status==="speaking"?"ALEX SPEAKING":status==="thinking"?"THINKING":"READY"}
+            <div style={{width:7,height:7,borderRadius:"50%",background:connected?(isRecording?"#f95e14":status==="speaking"?"#00dbe9":"#00ff64"):"#ffb4ab",animation:"pulse 2s infinite"}}/>
+            <span style={{fontSize:12,fontFamily:"JetBrains Mono, monospace",color:connected?(isRecording?"#f95e14":status==="speaking"?"#00dbe9":"#00dbe9"):"#ffb4ab"}}>
+              {!connected?"CONNECTING...":isRecording?"YOU ARE SPEAKING":status==="speaking"?"ALEX IS SPEAKING":status==="thinking"?"PROCESSING":"LISTENING"}
             </span>
             <span style={{fontSize:12,fontFamily:"JetBrains Mono, monospace",color:"#849495",marginLeft:12}}>{formatTime(elapsed)}</span>
           </div>
@@ -470,10 +450,7 @@ export default function InterviewRoomPage() {
               </span>
             </div>
             {tabSwitches>0&&<span style={{fontSize:10,fontFamily:"JetBrains Mono, monospace",color:"#ff6b6b",padding:"3px 8px",background:"rgba(255,70,70,0.08)",borderRadius:9999}}>⚠ {tabSwitches} SWITCH</span>}
-            {status==="speaking"&&(
-              <button onClick={interruptAlex} style={{padding:"5px 12px",borderRadius:9999,fontSize:10,fontFamily:"JetBrains Mono, monospace",background:"rgba(0,219,233,0.1)",border:"1px solid rgba(0,219,233,0.3)",color:"#00dbe9",cursor:"pointer"}}>⏭ SKIP</button>
-            )}
-            <button onClick={()=>{interruptAlex();streamRef.current?.getTracks().forEach(t=>t.stop());router.push("/dashboard");}} style={{padding:"7px 16px",borderRadius:9999,background:"rgba(255,180,171,0.08)",border:"1px solid rgba(255,180,171,0.25)",color:"#ffb4ab",fontSize:12,fontWeight:600,cursor:"pointer"}}>End</button>
+            <button onClick={()=>{endInterview();}} style={{padding:"7px 16px",borderRadius:9999,background:"rgba(255,180,171,0.08)",border:"1px solid rgba(255,180,171,0.25)",color:"#ffb4ab",fontSize:12,fontWeight:600,cursor:"pointer"}}>End</button>
           </div>
         </div>
       </header>
@@ -508,6 +485,7 @@ export default function InterviewRoomPage() {
               {label:"Tab Switches",value:tabSwitches,bad:tabSwitches>0},
               {label:"Flags",value:proctoringFlags.length,bad:proctoringFlags.length>2},
               {label:"Face",value:faceCount===1?"OK":faceCount===0?"Missing":"Multiple",bad:faceCount!==1},
+              {label:"Connection",value:connected?"Live":"..."},
             ].map(({label,value,bad})=>(
               <div key={label} style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
                 <span style={{fontSize:10,color:"#849495",fontFamily:"JetBrains Mono, monospace"}}>{label}</span>
@@ -543,19 +521,17 @@ export default function InterviewRoomPage() {
               border:`1px solid ${isRecording?"rgba(249,94,20,0.3)":status==="speaking"?"rgba(0,219,233,0.2)":"rgba(255,255,255,0.07)"}`}}>
               <div style={{width:5,height:5,borderRadius:"50%",background:isRecording?"#f95e14":status==="speaking"?"#00dbe9":"#849495",animation:"pulse 1.2s infinite"}}/>
               <span style={{fontSize:10,fontFamily:"JetBrains Mono, monospace",letterSpacing:"0.06em",color:isRecording?"#f95e14":status==="speaking"?"#00dbe9":"#849495"}}>
-                {isRecording?"RECORDING — SPEAK NOW":status==="speaking"?"ALEX IS SPEAKING — INTERRUPT ANYTIME":status==="thinking"?"PROCESSING":"MIC ACTIVE — SPEAK ANYTIME"}
+                {!connected?"CONNECTING TO ALEX...":isRecording?"YOU ARE SPEAKING":status==="speaking"?"ALEX IS SPEAKING":status==="thinking"?"PROCESSING":"SPEAK ANYTIME — ALEX IS LISTENING"}
               </span>
             </div>
           </div>
 
-          {voiceTranscript&&(
-            <div style={{textAlign:"center",marginBottom:4}}>
-              <span style={{fontSize:12,color:"#f95e14",fontStyle:"italic",padding:"2px 10px",background:"rgba(249,94,20,0.06)",borderRadius:8}}>"{voiceTranscript}"</span>
-            </div>
-          )}
-
           <div style={{flex:1,overflowY:"auto",padding:"6px 18px 8px"}}>
-            {messages.length===0&&<div style={{textAlign:"center",color:"#849495",fontSize:14,marginTop:40}}>Connecting to Alex...</div>}
+            {messages.length===0&&(
+              <div style={{textAlign:"center",color:"#849495",fontSize:14,marginTop:40}}>
+                {connected ? "Alex will speak first — just listen..." : "Connecting to Alex..."}
+              </div>
+            )}
             {messages.map(entry=>(
               <div key={entry.id} style={{display:"flex",gap:9,marginBottom:10,flexDirection:entry.role==="candidate"?"row-reverse":"row"}}>
                 <div style={{width:26,height:26,borderRadius:"50%",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,
@@ -573,54 +549,29 @@ export default function InterviewRoomPage() {
                 </div>
               </div>
             ))}
-            {loading&&(
-              <div style={{display:"flex",gap:9,marginBottom:10}}>
-                <div style={{width:26,height:26,borderRadius:"50%",background:"linear-gradient(135deg,#00dbe9,#7000ff)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#fff"}}>AL</div>
-                <div style={{padding:"10px 14px",borderRadius:"3px 13px 13px 13px",background:"rgba(22,27,34,0.95)",border:"1px solid rgba(255,255,255,0.06)",display:"flex",gap:4,alignItems:"center"}}>
-                  {[0,110,220].map(d=><div key={d} style={{width:5,height:5,borderRadius:"50%",background:"#00dbe9",animation:`bounce 0.85s infinite ${d}ms`}}/>)}
-                </div>
-              </div>
-            )}
             <div ref={bottomRef}/>
           </div>
 
-          <div style={{borderTop:"1px solid rgba(255,255,255,0.05)",background:"rgba(12,14,18,0.98)",padding:"10px 18px 14px"}}>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <div style={{position:"relative",flexShrink:0}}>
-                {isRecording&&<div style={{position:"absolute",inset:-5,borderRadius:"50%",border:"1.5px solid #f95e14",animation:"ripple 1s infinite"}}/>}
-                <div style={{width:32,height:32,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,
-                  background:isRecording?"rgba(249,94,20,0.15)":"rgba(0,219,233,0.06)",
-                  border:`1.5px solid ${isRecording?"rgba(249,94,20,0.4)":"rgba(0,219,233,0.15)"}`}}>
+          <div style={{borderTop:"1px solid rgba(255,255,255,0.05)",background:"rgba(12,14,18,0.98)",padding:"14px 18px"}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,justifyContent:"center"}}>
+              <div style={{position:"relative"}}>
+                {isRecording&&<div style={{position:"absolute",inset:-8,borderRadius:"50%",border:"2px solid #f95e14",animation:"ripple 1s infinite"}}/>}
+                {isRecording&&<div style={{position:"absolute",inset:-16,borderRadius:"50%",border:"1px solid #f95e14",animation:"ripple 1s infinite 0.4s"}}/>}
+                <div style={{width:48,height:48,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,
+                  background:isRecording?"rgba(249,94,20,0.2)":connected?"rgba(0,219,233,0.08)":"rgba(255,255,255,0.04)",
+                  border:`2px solid ${isRecording?"rgba(249,94,20,0.6)":connected?"rgba(0,219,233,0.3)":"rgba(255,255,255,0.1)"}`}}>
                   {isRecording?"🔴":"🎤"}
                 </div>
               </div>
-              <input value={input}
-                onChange={e => {
-                  setInput(e.target.value);
-                  // Interrupt Alex when user starts typing
-                  if (isPlayingRef.current && e.target.value.length === 1) interruptAlex();
-                }}
-                onKeyDown={e=>{
-                  if(e.key==="Enter"&&!e.shiftKey&&input.trim()){
-                    e.preventDefault();
-                    stopListening();
-                    sendMessage(input);
-                  }
-                }}
-                placeholder={isRecording?"Listening — or type to interrupt...":status==="speaking"?"Type to interrupt Alex...":"Speak or type your answer"}
-                style={{flex:1,background:"rgba(22,24,28,0.8)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"9px 13px",color:"#e2e2e8",fontSize:13,outline:"none",fontFamily:"Inter, sans-serif"}}
-                onFocus={e=>e.target.style.borderColor="rgba(0,219,233,0.35)"}
-                onBlur={e=>e.target.style.borderColor="rgba(255,255,255,0.07)"}/>
-              {input.trim()&&(
-                <button onClick={()=>{stopListening();sendMessage(input);}} disabled={loading}
-                  style={{padding:"9px 15px",borderRadius:10,background:"#f95e14",border:"none",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer",flexShrink:0}}>
-                  Send
-                </button>
-              )}
+              <div style={{textAlign:"left"}}>
+                <p style={{fontSize:13,color:isRecording?"#f95e14":connected?"#00dbe9":"#849495",fontWeight:600,marginBottom:2}}>
+                  {!connected?"Connecting...":isRecording?"Recording your answer...":status==="speaking"?"Alex is speaking...":"Speak naturally — Alex will respond"}
+                </p>
+                <p style={{fontSize:10,color:"#3a4855",fontFamily:"JetBrains Mono, monospace",letterSpacing:"0.06em"}}>
+                  OPENAI REALTIME · NO NEED TO PRESS ANYTHING · JUST TALK
+                </p>
+              </div>
             </div>
-            <p style={{fontSize:9,color:"#3a4855",fontFamily:"JetBrains Mono, monospace",textAlign:"center",marginTop:5,letterSpacing:"0.08em"}}>
-              SPEAK OR TYPE TO INTERRUPT · PROCTORED · {proctoringFlags.length} FLAGS
-            </p>
           </div>
         </div>
       </main>
