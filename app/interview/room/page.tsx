@@ -332,34 +332,34 @@ export default function InterviewRoomPage() {
 
       case "response.done":
         setStatus("listening");
-        const lastMsg = messagesRef.current[messagesRef.current.length - 1];
-        console.log("ALEX LAST MSG:", lastMsg?.content);
-        if (lastMsg?.role === "interviewer") {
-          const c = lastMsg.content.toLowerCase();
-          const shouldEnd = (
-            c.includes("we'll be in touch") || 
-            c.includes("end of our interview") ||
-            c.includes("brings us to the end") ||
-            c.includes("that concludes") ||
-            c.includes("end of the interview") ||
-            c.includes("thank you for your time") ||
-            c.includes("that's all the questions") ||
-            c.includes("good luck") ||
-            c.includes("all the best") ||
-            c.includes("wish you the best") ||
-            c.includes("have a great") ||
-            c.includes("take care") ||
-            c.includes("best of luck") ||
-            c.includes("we will be in touch") ||
-            c.includes("i'll let you know") ||
-            c.includes("that wraps up")
-          );
-          if (shouldEnd) setTimeout(() => endInterview(), 3000);
-        }
-        // Force end after 10 full exchanges (interviewer + candidate pairs)
-        const totalMsgs = messagesRef.current.length;
-        const candidateMsgs = messagesRef.current.filter(m => m.role === "candidate").length;
-        if (totalMsgs >= 18 && candidateMsgs >= 7) setTimeout(() => endInterview(), 4000);
+        // Get transcript from event directly
+        const outputText = event.response?.output
+          ?.filter((o: any) => o.type === "message")
+          ?.map((o: any) => o.content?.filter((c: any) => c.type === "audio" || c.type === "text")?.map((c: any) => c.transcript || c.text || "").join(" "))
+          ?.join(" ") || "";
+        console.log("ALEX SAID:", outputText);
+        const c2 = outputText.toLowerCase();
+        const shouldEnd2 = c2.includes("we'll be in touch") ||
+          c2.includes("end of our interview") ||
+          c2.includes("brings us to the end") ||
+          c2.includes("that concludes") ||
+          c2.includes("end of the interview") ||
+          c2.includes("thank you for your time") ||
+          c2.includes("that's all the questions") ||
+          c2.includes("good luck") ||
+          c2.includes("all the best") ||
+          c2.includes("best of luck") ||
+          c2.includes("we will be in touch") ||
+          c2.includes("take care") ||
+          c2.includes("that wraps up") ||
+          c2.includes("wish you the best") ||
+          c2.includes("have a great day") ||
+          c2.includes("have a great time");
+        if (shouldEnd2) { console.log("ENDING INTERVIEW"); setTimeout(() => endInterview(), 3000); }
+        // Force end after enough exchanges
+        const totalMsgs2 = messagesRef.current.length;
+        const candidateMsgs2 = messagesRef.current.filter(m => m.role === "candidate").length;
+        if (totalMsgs2 >= 18 && candidateMsgs2 >= 7) setTimeout(() => endInterview(), 4000);
         break;
     }
   }, []);
@@ -368,7 +368,11 @@ export default function InterviewRoomPage() {
     clearInterval(timerRef.current);
     const dur = Math.floor((Date.now()-startRef.current)/1000);
     const finalMessages = messagesRef.current;
-    if (sessionIdRef.current) {
+    const cfg = configRef.current;
+    const sessionId = sessionIdRef.current;
+
+    // Save transcript to Supabase
+    if (sessionId) {
       try {
         const supabase = createClient();
         await supabase.from("sessions").update({
@@ -376,11 +380,33 @@ export default function InterviewRoomPage() {
           duration_seconds: dur,
           completed: true,
           proctoring: { flags: flagsRef.current, tab_switches: tabSwitches, total_flags: flagsRef.current.length }
-        }).eq("id", sessionIdRef.current);
-      } catch {}
+        }).eq("id", sessionId);
+      } catch (e) { console.error("Supabase update error:", e); }
     }
+
+    // Save to localStorage for results page
     localStorage.setItem("interview_transcript", JSON.stringify(finalMessages));
-    localStorage.setItem("interview_config_done", JSON.stringify(configRef.current));
+    localStorage.setItem("interview_config_done", JSON.stringify(cfg));
+
+    // Call feedback API and save to Supabase
+    if (finalMessages.length > 2 && cfg && sessionId) {
+      try {
+        const feedbackRes = await fetch("/api/interview/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            transcript: finalMessages,
+            config: cfg,
+            sessionId: sessionId,
+          }),
+        });
+        if (feedbackRes.ok) {
+          const feedbackData = await feedbackRes.json();
+          console.log("Feedback saved:", feedbackData?.scores?.overall);
+        }
+      } catch (e) { console.error("Feedback error:", e); }
+    }
+
     stopEverything();
     router.push("/interview/results");
   };
