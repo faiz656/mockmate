@@ -568,30 +568,15 @@ export default function InterviewRoomPage() {
             </div>
           </div>
 
-          <div style={{flex:1,overflowY:"auto",padding:"6px 18px 8px"}}>
-            {messages.length===0&&(
-              <div style={{textAlign:"center",color:"#849495",fontSize:14,marginTop:40}}>
-                {connected ? "Alex will speak first — just listen..." : "Connecting to Alex..."}
+          <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <div style={{textAlign:"center"}}>
+              <div style={{fontSize:13,color:isRecording?"#f95e14":status==="speaking"?"#00dbe9":"#849495",fontFamily:"JetBrains Mono, monospace",letterSpacing:"0.06em"}}>
+                {!connected?"CONNECTING...":isRecording?"YOU ARE SPEAKING...":status==="speaking"?"ALEX IS SPEAKING...":status==="thinking"?"PROCESSING...":"SPEAK ANYTIME"}
               </div>
-            )}
-            {messages.map(entry=>(
-              <div key={entry.id} style={{display:"flex",gap:9,marginBottom:10,flexDirection:entry.role==="candidate"?"row-reverse":"row"}}>
-                <div style={{width:26,height:26,borderRadius:"50%",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,
-                  background:entry.role==="interviewer"?"linear-gradient(135deg,#00dbe9,#7000ff)":"#f95e14",color:"#fff"}}>
-                  {entry.role==="interviewer"?"AL":(cfg?.candidateName?.[0]?.toUpperCase()||"Y")}
-                </div>
-                <div style={{maxWidth:"74%"}}>
-                  <div style={{fontSize:9,fontFamily:"JetBrains Mono, monospace",color:"#5a6870",marginBottom:2,textAlign:entry.role==="candidate"?"right":"left"}}>{formatMsgTime(entry.timestamp)}</div>
-                  <div style={{padding:"9px 13px",borderRadius:entry.role==="interviewer"?"3px 13px 13px 13px":"13px 3px 13px 13px",fontSize:14,lineHeight:1.65,
-                    background:entry.role==="interviewer"?"rgba(22,27,34,0.95)":"rgba(249,94,20,0.1)",
-                    border:`1px solid ${entry.role==="interviewer"?"rgba(255,255,255,0.06)":"rgba(249,94,20,0.2)"}`,
-                    color:entry.role==="interviewer"?"#dde8f0":"#ffb59a"}}>
-                    {entry.content}
-                  </div>
-                </div>
+              <div style={{fontSize:11,color:"#3a4855",marginTop:8,fontFamily:"JetBrains Mono, monospace"}}>
+                {messages.length} exchanges · {messages.filter(m=>m.role==="candidate").length} answers
               </div>
-            ))}
-            <div ref={bottomRef}/>
+            </div>
           </div>
 
           <div style={{borderTop:"1px solid rgba(255,255,255,0.05)",background:"rgba(12,14,18,0.98)",padding:"14px 18px"}}>
