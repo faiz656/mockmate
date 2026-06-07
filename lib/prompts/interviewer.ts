@@ -181,7 +181,7 @@ Never accept surface-level answers. Push back hard but stay professional.`
     ? "a software house in Pakistan"
     : config.company === "startup"
     ? "a Pakistani tech startup"
-    : config.company === "corporate"
+    : (config.company as string) === "corporate"
     ? "a corporate company in Pakistan"
     : "a Pakistani company";
 
