@@ -237,9 +237,9 @@ export default function InterviewRoomPage() {
             input_audio_transcription: { model: "whisper-1" },
             turn_detection: {
               type: "server_vad",
-              threshold: 0.5,
-              prefix_padding_ms: 300,
-              silence_duration_ms: 800,
+              threshold: 0.6,
+              prefix_padding_ms: 500,
+              silence_duration_ms: 1200,
             },
           }
         }));
@@ -355,9 +355,10 @@ export default function InterviewRoomPage() {
           );
           if (shouldEnd) setTimeout(() => endInterview(), 3000);
         }
-        // Force end after 16 interviewer messages
-        const interviewerMsgs = messagesRef.current.filter(m => m.role === "interviewer").length;
-        if (interviewerMsgs >= 10) setTimeout(() => endInterview(), 4000);
+        // Force end after 10 full exchanges (interviewer + candidate pairs)
+        const totalMsgs = messagesRef.current.length;
+        const candidateMsgs = messagesRef.current.filter(m => m.role === "candidate").length;
+        if (totalMsgs >= 18 && candidateMsgs >= 7) setTimeout(() => endInterview(), 4000);
         break;
     }
   }, []);
