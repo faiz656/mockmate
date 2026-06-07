@@ -195,22 +195,28 @@ export default function InterviewRoomPage() {
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
+  const statusRef = useRef(status);
+  const isRecordingRef = useRef(isRecording);
+  useEffect(() => { statusRef.current = status; }, [status]);
+  useEffect(() => { isRecordingRef.current = isRecording; }, [isRecording]);
   useEffect(() => {
     let raf: number;
     const animate = () => {
+      const s = statusRef.current;
+      const rec = isRecordingRef.current;
       barsRef.current.forEach((bar, i) => {
         if (!bar) return;
-        const base = isRecording ? 22 : status==="speaking" ? 30 : status==="thinking" ? 5 : 8;
-        const wave = Math.sin(Date.now()/160+i/1.8)*(status==="speaking"?26:isRecording?18:5);
+        const base = rec ? 22 : s==="speaking" ? 30 : s==="thinking" ? 5 : 8;
+        const wave = Math.sin(Date.now()/160+i/1.8)*(s==="speaking"?26:rec?18:5);
         bar.style.height = `${Math.max(3,base+wave)}px`;
-        bar.style.background = isRecording ? "#f95e14" : "#00f0ff";
-        bar.style.opacity = status==="thinking" ? "0.25" : "0.85";
+        bar.style.background = rec ? "#f95e14" : "#00f0ff";
+        bar.style.opacity = s==="thinking" ? "0.25" : "0.85";
       });
       raf = requestAnimationFrame(animate);
     };
     animate();
     return () => cancelAnimationFrame(raf);
-  }, [status, isRecording]);
+  }, []);
 
   const stopListening = useCallback(() => {
     try { recognitionRef.current?.abort(); } catch {}
@@ -225,7 +231,7 @@ export default function InterviewRoomPage() {
     if (!SR) return;
     stopListening();
     const recognition = new SR();
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = "en-US";
     recognition.maxAlternatives = 1;
@@ -233,8 +239,10 @@ export default function InterviewRoomPage() {
     recognition.onstart = () => setIsRecording(true);
     recognition.onend = () => {
       setIsRecording(false);
-      setVoiceTranscript("");
-      if (!isBusyRef.current) setTimeout(() => startListening(), 1500);
+      // Restart immediately unless busy - handles Windows cutting off
+      if (!isBusyRef.current && !isPlayingRef.current) {
+        setTimeout(() => startListening(), 300);
+      }
     };
     let accumulatedFinal = "";
     let silenceTimer: any = null;
