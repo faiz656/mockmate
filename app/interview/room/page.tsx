@@ -306,12 +306,12 @@ export default function InterviewRoomPage() {
         }
         break;
 
-      case "response.audio_transcript.delta":
+      case "response.output_audio_transcript.delta":
         // Alex is speaking - update status
         setStatus("speaking");
         break;
 
-      case "response.audio_transcript.done":
+      case "response.output_audio_transcript.done":
         if (event.transcript?.trim()) {
           const alexMsg: TranscriptEntry = {
             id: crypto.randomUUID(),
@@ -327,7 +327,7 @@ export default function InterviewRoomPage() {
         }
         break;
 
-      case "response.audio.done":
+      case "response.output_audio.done":
         setStatus("listening");
         break;
 
