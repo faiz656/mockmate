@@ -278,6 +278,7 @@ export default function InterviewRoomPage() {
   };
 
   const handleRealtimeEvent = useCallback((event: any) => {
+    console.log("EVENT:", event.type);
     switch (event.type) {
       case "input_audio_buffer.speech_started":
         setIsRecording(true);
