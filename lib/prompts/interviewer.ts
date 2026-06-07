@@ -61,6 +61,36 @@ const roleQuestions: Record<string, string[]> = {
     "You're given a legacy codebase with no tests and no documentation. You need to add a feature. What's your approach?",
     "Design a system to detect duplicate job applications from the same candidate across different email addresses.",
   ],
+  mobile_developer: [
+    "Walk me through how you'd architect an offline-first mobile app for Pakistan where network is unreliable.",
+    "Explain the difference between React Native and Flutter. You've used one — why that choice?",
+    "How do you handle app performance on low-end Android devices that are common in Pakistan?",
+    "Walk me through how push notifications work end to end on iOS and Android.",
+    "A user complains the app drains their battery. How do you diagnose and fix this?",
+    "How do you manage state in a mobile app with 20+ screens? What's your architecture?",
+    "Explain how you'd implement biometric authentication in a mobile banking app.",
+    "Your app crashes on Samsung devices but works on OnePlus. How do you debug this?",
+  ],
+  data_scientist: [
+    "Explain overfitting to me like I'm a business stakeholder, not a data scientist.",
+    "You've built a model with 95% accuracy. Your manager is excited. Why are you not?",
+    "Walk me through how you'd build a churn prediction model for a Pakistani telecom company.",
+    "How do you handle imbalanced datasets? Give me a real scenario where this mattered.",
+    "Explain the bias-variance tradeoff. When have you actually had to navigate this?",
+    "Your model works great in testing but fails in production after 2 weeks. What happened?",
+    "How would you A/B test a recommendation algorithm on an e-commerce platform?",
+    "Walk me through feature engineering decisions you've made that actually improved a model.",
+  ],
+  devops_engineer: [
+    "A production server goes down at 2am. Walk me through your exact response process.",
+    "Explain how you'd set up a CI/CD pipeline for a Pakistani startup with a small team.",
+    "What's the difference between horizontal and vertical scaling? When do you use each?",
+    "How do you secure a Kubernetes cluster? What are the most common mistakes teams make?",
+    "Walk me through how you'd migrate a monolithic app to microservices without downtime.",
+    "Your Docker containers keep running out of memory in production. How do you diagnose this?",
+    "Explain how you'd implement blue-green deployment for a critical fintech application.",
+    "How do you handle secrets management across multiple environments and services?",
+  ],
   data_analyst: [
     "You have 6 months of sales data and your manager asks 'why did revenue drop in March?' Walk me through your analysis.",
     "How do you handle missing data in a dataset? Give me 3 different scenarios with different solutions.",
@@ -100,6 +130,18 @@ const pressureQuestions: Record<string, string[]> = {
   sales_executive: [
     "Sell me this pen. No — actually sell it. I'm a busy CEO, I have 30 seconds.",
     "What's your actual close rate? Be specific, not rounded up.",
+  ],
+  mobile_developer: [
+    "iOS or Android — which do you actually prefer developing for and why? Be honest.",
+    "If I opened your GitHub right now, what would I find that you're not proud of?",
+  ],
+  data_scientist: [
+    "How many of your models have actually been deployed to production and are still running?",
+    "What's the most embarrassing wrong prediction your model ever made?",
+  ],
+  devops_engineer: [
+    "Tell me about the worst outage you've caused. What happened?",
+    "If I audited your last infrastructure setup, what would concern me?",
   ],
   default: [
     "What's the one thing about your work that you know needs improvement but haven't fixed yet?",
