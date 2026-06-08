@@ -149,16 +149,16 @@ export default function SignupPage() {
 
                 <div style={{ marginBottom: 24 }}>
                   <label>Verification Code</label>
-                  <input className="otp-input" placeholder="000000" maxLength={6} value={otp}
+                  <input className="otp-input" placeholder="000000" maxLength={8} value={otp}
                     onChange={e => setOtp(e.target.value.replace(/\D/g, ""))}
                     onKeyDown={e => e.key === "Enter" && verify()} />
                 </div>
 
-                <button onClick={verify} disabled={loading || otp.length < 6}
+                <button onClick={verify} disabled={loading || otp.length < 8}
                   style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none",
-                    background: otp.length === 6 ? "linear-gradient(135deg, #00dbe9, #00f0ff)" : "rgba(0,219,233,0.2)",
-                    color: otp.length === 6 ? "#002022" : "#849495",
-                    fontSize: 13, fontWeight: 700, fontFamily: "JetBrains Mono, monospace", letterSpacing: "0.08em", textTransform: "uppercase", cursor: otp.length === 6 ? "pointer" : "not-allowed" }}>
+                    background: otp.length >= 6 ? "linear-gradient(135deg, #00dbe9, #00f0ff)" : "rgba(0,219,233,0.2)",
+                    color: otp.length >= 6 ? "#002022" : "#849495",
+                    fontSize: 13, fontWeight: 700, fontFamily: "JetBrains Mono, monospace", letterSpacing: "0.08em", textTransform: "uppercase", cursor: otp.length >= 6 ? "pointer" : "not-allowed" }}>
                   {loading ? "Verifying..." : "Verify & Continue →"}
                 </button>
 
