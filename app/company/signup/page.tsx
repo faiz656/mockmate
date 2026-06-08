@@ -100,11 +100,11 @@ export default function CompanySignupPage() {
               </p>
               {error && <div style={{ padding: "12px 16px", borderRadius: 10, background: error === "New code sent!" ? "rgba(0,219,233,0.08)" : "rgba(255,180,171,0.08)", border: "1px solid rgba(255,180,171,0.2)", color: error === "New code sent!" ? "#00dbe9" : "#ffb4ab", fontSize: 13, marginBottom: 20 }}>{error}</div>}
               <input
-                placeholder="000000" maxLength={8} value={otp}
+                placeholder="00000000" maxLength={8} value={otp}
                 onChange={e => setOtp(e.target.value.replace(/\D/g, ""))}
                 onKeyDown={e => e.key === "Enter" && verify()}
                 style={{ width: "100%", background: "rgba(10,12,16,0.8)", border: "2px solid rgba(0,219,233,0.3)", borderRadius: 14, padding: "20px 16px", color: "#00dbe9", fontSize: 32, fontFamily: "JetBrains Mono, monospace", outline: "none", boxSizing: "border-box", textAlign: "center", letterSpacing: 12, marginBottom: 20 }} />
-              <button onClick={verify} disabled={loading || otp.length < 6}
+              <button onClick={verify} disabled={loading || otp.length < 8}
                 style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", background: otp.length >= 6 ? "linear-gradient(135deg, #00dbe9, #00f0ff)" : "rgba(0,219,233,0.2)", color: otp.length >= 6 ? "#002022" : "#849495", fontSize: 13, fontWeight: 700, fontFamily: "JetBrains Mono, monospace", letterSpacing: "0.08em", textTransform: "uppercase", cursor: otp.length >= 6 ? "pointer" : "not-allowed" }}>
                 {loading ? "Verifying..." : "Verify & Continue →"}
               </button>

@@ -68,7 +68,7 @@ export default function SignupPage() {
         .input-field { width: 100%; background: rgba(10,12,16,0.8); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px 16px; color: #e2e2e8; font-size: 14px; font-family: Inter, sans-serif; outline: none; box-sizing: border-box; transition: border-color 0.2s; }
         .input-field:focus { border-color: rgba(0,219,233,0.5); }
         .input-field::placeholder { color: #849495; }
-        .otp-input { width: 100%; background: rgba(10,12,16,0.8); border: 2px solid rgba(0,219,233,0.3); border-radius: 14px; padding: 20px 16px; color: #00dbe9; font-size: 32px; font-family: 'JetBrains Mono', monospace; outline: none; box-sizing: border-box; text-align: center; letter-spacing: 12px; transition: border-color 0.2s; }
+        .otp-input { width: 100%; background: rgba(10,12,16,0.8); border: 2px solid rgba(0,219,233,0.3); border-radius: 14px; padding: 20px 16px; color: #00dbe9; font-size: 32px; font-family: 'JetBrains Mono', monospace; outline: none; box-sizing: border-box; text-align: center; letter-spacing: 8px; transition: border-color 0.2s; }
         .otp-input:focus { border-color: rgba(0,219,233,0.7); box-shadow: 0 0 20px rgba(0,219,233,0.1); }
         label { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: #849495; letter-spacing: 0.08em; text-transform: uppercase; display: block; margin-bottom: 8px; }
       `}</style>
@@ -149,7 +149,7 @@ export default function SignupPage() {
 
                 <div style={{ marginBottom: 24 }}>
                   <label>Verification Code</label>
-                  <input className="otp-input" placeholder="000000" maxLength={8} value={otp}
+                  <input className="otp-input" placeholder="00000000" maxLength={8} value={otp}
                     onChange={e => setOtp(e.target.value.replace(/\D/g, ""))}
                     onKeyDown={e => e.key === "Enter" && verify()} />
                 </div>
