@@ -7,10 +7,32 @@ import { createClient } from "@/lib/supabase/client";
 export default function CompanySignupPage() {
   const router = useRouter();
   const [form, setForm] = useState({ name: "", email: "", password: "", industry: "" });
+  const [step, setStep] = useState<"signup" | "verify">("signup");
+  const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const update = (k: string, v: string) => setForm(prev => ({ ...prev, [k]: v }));
+
+  const verify = async () => {
+    if (!otp) { setError("Enter the code"); return; }
+    setLoading(true);
+    setError("");
+    const supabase = createClient();
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      email: form.email,
+      token: otp,
+      type: "signup",
+    });
+    if (verifyError) { setError("Invalid or expired code."); setLoading(false); return; }
+    router.push("/company/dashboard");
+  };
+
+  const resendOtp = async () => {
+    const supabase = createClient();
+    await supabase.auth.resend({ type: "signup", email: form.email });
+    setError("New code sent!");
+  };
 
   const signup = async () => {
     if (!form.name || !form.email || !form.password) { setError("All fields required"); return; }
@@ -53,7 +75,9 @@ export default function CompanySignupPage() {
       return;
     }
 
-    router.push("/company/dashboard");
+    setStep("verify");
+    setLoading(false);
+    return;
   };
 
   return (
@@ -82,6 +106,33 @@ export default function CompanySignupPage() {
       <main style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px", position: "relative" }}>
         <div style={{ position: "absolute", top: "20%", left: "50%", transform: "translateX(-50%)", width: 500, height: 400, background: "rgba(0,219,233,0.05)", borderRadius: "50%", filter: "blur(100px)", pointerEvents: "none" }} />
 
+        {step === "verify" ? (
+          <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 420 }}>
+            <div className="glass" style={{ borderRadius: 24, padding: 40, textAlign: "center" }}>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>📧</div>
+              <h1 style={{ fontSize: 24, fontWeight: 700, fontFamily: "Geist, sans-serif", color: "#fff", marginBottom: 8 }}>Check your email</h1>
+              <p style={{ fontSize: 14, color: "#849495", lineHeight: 1.6, marginBottom: 24 }}>
+                We sent a 6-digit code to<br />
+                <span style={{ color: "#00dbe9", fontFamily: "JetBrains Mono, monospace" }}>{form.email}</span>
+              </p>
+              {error && <div style={{ padding: "12px 16px", borderRadius: 10, background: error === "New code sent!" ? "rgba(0,219,233,0.08)" : "rgba(255,180,171,0.08)", border: "1px solid rgba(255,180,171,0.2)", color: error === "New code sent!" ? "#00dbe9" : "#ffb4ab", fontSize: 13, marginBottom: 20 }}>{error}</div>}
+              <input
+                placeholder="000000" maxLength={6} value={otp}
+                onChange={e => setOtp(e.target.value.replace(/\D/g, ""))}
+                onKeyDown={e => e.key === "Enter" && verify()}
+                style={{ width: "100%", background: "rgba(10,12,16,0.8)", border: "2px solid rgba(0,219,233,0.3)", borderRadius: 14, padding: "20px 16px", color: "#00dbe9", fontSize: 32, fontFamily: "JetBrains Mono, monospace", outline: "none", boxSizing: "border-box", textAlign: "center", letterSpacing: 12, marginBottom: 20 }} />
+              <button onClick={verify} disabled={loading || otp.length < 6}
+                style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", background: otp.length === 6 ? "linear-gradient(135deg, #00dbe9, #00f0ff)" : "rgba(0,219,233,0.2)", color: otp.length === 6 ? "#002022" : "#849495", fontSize: 13, fontWeight: 700, fontFamily: "JetBrains Mono, monospace", letterSpacing: "0.08em", textTransform: "uppercase", cursor: otp.length === 6 ? "pointer" : "not-allowed" }}>
+                {loading ? "Verifying..." : "Verify & Continue →"}
+              </button>
+              <div style={{ marginTop: 16 }}>
+                <button onClick={resendOtp} style={{ fontSize: 13, color: "#00dbe9", background: "none", border: "none", cursor: "pointer" }}>Resend code</button>
+                {" · "}
+                <button onClick={() => setStep("signup")} style={{ fontSize: 13, color: "#849495", background: "none", border: "none", cursor: "pointer" }}>← Back</button>
+              </div>
+            </div>
+          </div>
+        ) : (
         <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 900, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, alignItems: "center" }}>
 
           <div>
@@ -165,6 +216,7 @@ export default function CompanySignupPage() {
             </p>
           </div>
         </div>
+        )}
       </main>
     </div>
   );

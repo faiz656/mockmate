@@ -11,6 +11,14 @@ export default function CompanyLoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const loginWithGoogle = async () => {
+    const supabase = createClient();
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/company/dashboard` }
+    });
+  };
+
   const login = async () => {
     setLoading(true);
     setError("");
