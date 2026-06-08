@@ -19,12 +19,25 @@ export default function CompanySignupPage() {
     setLoading(true);
     setError("");
     const supabase = createClient();
-    const { error: verifyError } = await supabase.auth.verifyOtp({
+    const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
       email: form.email,
       token: otp,
       type: "signup",
     });
     if (verifyError) { setError("Invalid or expired code."); setLoading(false); return; }
+    // Now create company record with verified session
+    if (verifyData.user) {
+      const { error: companyError } = await supabase.from("companies").insert({
+        id: verifyData.user.id,
+        name: form.name,
+        email: form.email,
+        industry: form.industry,
+        plan: "trial",
+        interview_limit: 20,
+        interviews_used: 0,
+      });
+      if (companyError) console.error("Company insert error:", companyError);
+    }
     router.push("/company/dashboard");
   };
 
