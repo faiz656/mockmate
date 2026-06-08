@@ -52,45 +52,15 @@ export default function CompanySignupPage() {
     setLoading(true);
     setError("");
     const supabase = createClient();
-
-    // Step 1: Create auth account
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
       options: { data: { full_name: form.name, account_type: "company" } }
     });
-
     if (authError) { setError(authError.message); setLoading(false); return; }
     if (!authData.user) { setError("Signup failed. Try again."); setLoading(false); return; }
-
-    // Step 2: Sign in immediately to get valid session
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: form.email,
-      password: form.password,
-    });
-    if (signInError) { setError(signInError.message); setLoading(false); return; }
-
-    // Step 3: Now create company record with valid session
-    const { error: companyError } = await supabase.from("companies").insert({
-      id: authData.user.id,
-      name: form.name,
-      email: form.email,
-      industry: form.industry,
-      plan: "trial",
-      interview_limit: 20,
-      interviews_used: 0,
-    });
-
-    if (companyError) {
-      console.error("Company insert error:", companyError);
-      setError("Account created but company setup failed: " + companyError.message);
-      setLoading(false);
-      return;
-    }
-
     setStep("verify");
     setLoading(false);
-    return;
   };
 
   return (
