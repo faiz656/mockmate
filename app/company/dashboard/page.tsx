@@ -123,7 +123,7 @@ export default function CompanyDashboardPage() {
               <div style={{ height: "100%", width: `${usagePercent}%`, background: usagePercent > 80 ? "#ffb4ab" : "#00dbe9", borderRadius: 9999, transition: "width 0.5s" }} />
             </div>
             <p style={{ fontSize: 12, color: "#849495" }}>{(company?.interview_limit ?? 20) - (company?.interviews_used || 0)} interviews remaining</p>
-            <button onClick={() => router.push("/company/billing")}
+            <button onClick={() => router.push("/#pricing")}
               style={{ marginTop: 16, padding: "8px 20px", borderRadius: 9999, background: "linear-gradient(135deg, #00dbe9, #00f0ff)", border: "none", color: "#002022", fontSize: 12, fontWeight: 700, fontFamily: "JetBrains Mono, monospace", cursor: "pointer" }}>
               Upgrade Plan →
             </button>
