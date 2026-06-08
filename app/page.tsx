@@ -244,18 +244,74 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer style={{ padding: "40px 24px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 20 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg, #00dbe9, #7000ff)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#fff" }}>M</div>
-            <span style={{ fontSize: 16, fontWeight: 700, color: "#dbfcff", fontFamily: "Geist, sans-serif" }}>MockMate</span>
+      <footer style={{ background: "rgba(0,0,0,0.4)", borderTop: "1px solid rgba(255,255,255,0.06)", padding: "60px 24px 32px" }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 40, marginBottom: 48, flexWrap: "wrap" }}>
+            
+            {/* Brand */}
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg, #00dbe9, #7000ff)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: "#fff" }}>M</div>
+                <span style={{ fontSize: 18, fontWeight: 700, color: "#dbfcff", fontFamily: "Geist, sans-serif" }}>MockMate</span>
+              </div>
+              <p style={{ fontSize: 14, color: "#849495", lineHeight: 1.7, maxWidth: 280 }}>Pakistan's first AI-powered interview simulator. Practice interviews, screen candidates, and hire smarter.</p>
+              <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
+                <a href="mailto:contact@mockmate.pk" style={{ fontSize: 12, color: "#00dbe9", textDecoration: "none", fontFamily: "JetBrains Mono, monospace" }}>contact@mockmate.pk</a>
+              </div>
+            </div>
+
+            {/* Product */}
+            <div>
+              <div style={{ fontSize: 11, fontFamily: "JetBrains Mono, monospace", color: "#849495", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 16 }}>Product</div>
+              {[
+                { label: "For Candidates", href: "/signup" },
+                { label: "For Companies", href: "/company/signup" },
+                { label: "Pricing", href: "/#pricing" },
+                { label: "Features", href: "/#features" },
+                { label: "How it works", href: "/#how" },
+              ].map(({ label, href }) => (
+                <div key={label} style={{ marginBottom: 10 }}>
+                  <Link href={href} style={{ fontSize: 14, color: "#849495", textDecoration: "none" }}>{label}</Link>
+                </div>
+              ))}
+            </div>
+
+            {/* Company */}
+            <div>
+              <div style={{ fontSize: 11, fontFamily: "JetBrains Mono, monospace", color: "#849495", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 16 }}>Company</div>
+              {[
+                { label: "About", href: "/about" },
+                { label: "Contact", href: "/contact" },
+                { label: "Blog", href: "/blog" },
+              ].map(({ label, href }) => (
+                <div key={label} style={{ marginBottom: 10 }}>
+                  <Link href={href} style={{ fontSize: 14, color: "#849495", textDecoration: "none" }}>{label}</Link>
+                </div>
+              ))}
+            </div>
+
+            {/* Legal */}
+            <div>
+              <div style={{ fontSize: 11, fontFamily: "JetBrains Mono, monospace", color: "#849495", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 16 }}>Legal</div>
+              {[
+                { label: "Privacy Policy", href: "/privacy" },
+                { label: "Terms of Service", href: "/terms" },
+              ].map(({ label, href }) => (
+                <div key={label} style={{ marginBottom: 10 }}>
+                  <Link href={href} style={{ fontSize: 14, color: "#849495", textDecoration: "none" }}>{label}</Link>
+                </div>
+              ))}
+            </div>
           </div>
-          <div style={{ display: "flex", gap: 24 }}>
-            <Link href="/company/login" style={{ fontSize: 13, color: "#849495", textDecoration: "none" }}>Companies</Link>
-            <Link href="/login" style={{ fontSize: 13, color: "#849495", textDecoration: "none" }}>Candidates</Link>
-            <Link href="/signup" style={{ fontSize: 13, color: "#849495", textDecoration: "none" }}>Sign Up</Link>
+
+          <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 24, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+            <span style={{ fontSize: 12, color: "#5a6870", fontFamily: "JetBrains Mono, monospace" }}>© 2026 MockMate · Pakistan's First AI Interview Platform</span>
+            <div style={{ display: "flex", gap: 20 }}>
+              <Link href="/privacy" style={{ fontSize: 12, color: "#5a6870", textDecoration: "none" }}>Privacy</Link>
+              <Link href="/terms" style={{ fontSize: 12, color: "#5a6870", textDecoration: "none" }}>Terms</Link>
+              <Link href="/contact" style={{ fontSize: 12, color: "#5a6870", textDecoration: "none" }}>Contact</Link>
+            </div>
           </div>
-          <span style={{ fontSize: 12, color: "#5a6870", fontFamily: "JetBrains Mono, monospace" }}>© 2026 MockMate · Pakistan's First AI Interview Platform</span>
         </div>
       </footer>
     </div>
