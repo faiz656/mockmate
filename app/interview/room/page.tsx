@@ -180,9 +180,22 @@ export default function InterviewRoomPage() {
   }, [permission]);
 
   const stopEverything = () => {
-    streamRef.current?.getTracks().forEach(t => t.stop());
-    pcRef.current?.close();
-    if (audioElRef.current) { audioElRef.current.pause(); audioElRef.current.src = ""; }
+    // Stop all camera and mic tracks
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => { t.stop(); t.enabled = false; });
+      streamRef.current = null;
+    }
+    // Stop webcam video element
+    const video = document.getElementById("mockmate-webcam") as HTMLVideoElement;
+    if (video) { video.srcObject = null; video.src = ""; }
+    // Close WebRTC
+    if (pcRef.current) { pcRef.current.close(); pcRef.current = null; }
+    // Stop audio
+    if (audioElRef.current) { audioElRef.current.pause(); audioElRef.current.srcObject = null; audioElRef.current.src = ""; }
+    // Stop any other media streams on the page
+    navigator.mediaDevices.getUserMedia({ audio: true, video: true })
+      .then(s => s.getTracks().forEach(t => t.stop()))
+      .catch(() => {});
   };
 
   const createSessionInDB = async (cfg: InterviewConfig) => {
@@ -237,9 +250,9 @@ export default function InterviewRoomPage() {
             input_audio_transcription: { model: "whisper-1" },
             turn_detection: {
               type: "server_vad",
-              threshold: 0.6,
-              prefix_padding_ms: 500,
-              silence_duration_ms: 1200,
+              threshold: 0.85,
+              prefix_padding_ms: 600,
+              silence_duration_ms: 1500,
             },
           }
         }));
@@ -465,6 +478,10 @@ export default function InterviewRoomPage() {
         @keyframes slidein{0%{opacity:0;transform:translateY(-8px)}100%{opacity:1;transform:translateY(0)}}
         ::-webkit-scrollbar{width:4px}
         ::-webkit-scrollbar-thumb{background:#3b494b;border-radius:10px}
+        @media(max-width:768px){
+          .webcam-panel{display:none!important}
+          header .nav-links{display:none!important}
+        }
       `}</style>
 
       {proctoringWarning&&(
@@ -500,8 +517,8 @@ export default function InterviewRoomPage() {
       </header>
 
       <main style={{flex:1,display:"flex",marginTop:64,overflow:"hidden"}}>
-        {/* Webcam panel */}
-        <div style={{width:260,flexShrink:0,background:"rgba(10,12,16,0.9)",borderRight:"1px solid rgba(255,255,255,0.05)",display:"flex",flexDirection:"column",padding:14,gap:10}}>
+        {/* Webcam panel - hidden on mobile */}
+        <div style={{width:260,flexShrink:0,background:"rgba(10,12,16,0.9)",borderRight:"1px solid rgba(255,255,255,0.05)",display:"flex",flexDirection:"column",padding:14,gap:10}} className="webcam-panel">
           <div style={{position:"relative",borderRadius:12,overflow:"hidden",background:"#000",aspectRatio:"4/3"}}>
             <video id="mockmate-webcam" muted playsInline style={{width:"100%",height:"100%",objectFit:"cover",transform:"scaleX(-1)",display:"block"}}/>
             <canvas id="mockmate-canvas" width={640} height={480} style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",transform:"scaleX(-1)"}}/>
