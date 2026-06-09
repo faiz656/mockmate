@@ -44,6 +44,7 @@ export default function InterviewRoomPage() {
   const isRecordingRef = useRef(false);
   const [isRecording, setIsRecording] = useState(false);
   const [pushToTalk, setPushToTalk] = useState(true);
+  const pushToTalkRef = useRef(true);
   const [isPressing, setIsPressing] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
@@ -52,6 +53,15 @@ export default function InterviewRoomPage() {
   useEffect(() => { flagsRef.current = proctoringFlags; }, [proctoringFlags]);
   useEffect(() => { statusRef.current = status; }, [status]);
   useEffect(() => { isRecordingRef.current = isRecording; }, [isRecording]);
+  useEffect(() => { 
+    pushToTalkRef.current = pushToTalk;
+    // When switching modes, update mic state
+    if (streamRef.current) {
+      streamRef.current.getAudioTracks().forEach(t => { 
+        t.enabled = !pushToTalk; // auto=enabled, PTT=disabled
+      });
+    }
+  }, [pushToTalk]);
 
   const addFlag = useCallback((type: ProctoringFlag["type"], message: string) => {
     const flag: ProctoringFlag = { type, timestamp: Date.now(), message };
@@ -246,10 +256,12 @@ export default function InterviewRoomPage() {
       dc.onopen = () => {
         setConnected(true);
         setStatus("listening");
-        // If PTT mode, mute mic immediately
-        const isVoiceMode = !pushToTalk;
-        if (!isVoiceMode && streamRef.current) {
-          streamRef.current.getAudioTracks().forEach(t => { t.enabled = false; });
+        const isVoiceMode = !pushToTalkRef.current;
+        // Only mute if PTT mode - keep enabled for auto mode
+        if (streamRef.current) {
+          streamRef.current.getAudioTracks().forEach(t => { 
+            t.enabled = isVoiceMode; // true for auto, false for PTT
+          });
         }
         dc.send(JSON.stringify({
           type: "session.update",
