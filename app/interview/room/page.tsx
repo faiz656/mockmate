@@ -232,9 +232,10 @@ export default function InterviewRoomPage() {
       audioElRef.current = audioEl;
       pc.ontrack = (e) => { audioEl.srcObject = e.streams[0]; };
 
-      // Add mic track
+      // Add mic track - muted if PTT mode
       if (streamRef.current) {
         const audioTrack = streamRef.current.getAudioTracks()[0];
+        if (pushToTalk) audioTrack.enabled = false;
         pc.addTrack(audioTrack, streamRef.current);
       }
 
