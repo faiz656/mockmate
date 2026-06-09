@@ -644,7 +644,7 @@ export default function InterviewRoomPage() {
                   style={{width:72,height:72,borderRadius:"50%",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,
                     background:isPressing?"rgba(249,94,20,0.3)":"rgba(255,255,255,0.06)",
                     boxShadow:isPressing?"0 0 30px rgba(249,94,20,0.5)":"none",
-                    border:`3px solid ${isPressing?"rgba(249,94,20,0.8)":"rgba(255,255,255,0.15)"}`,
+                    outline:`3px solid ${isPressing?"rgba(249,94,20,0.8)":"rgba(255,255,255,0.15)"}`,
                     transition:"all 0.1s",transform:isPressing?"scale(0.95)":"scale(1)"}}>
                   🎤
                 </button>
