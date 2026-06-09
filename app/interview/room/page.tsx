@@ -108,7 +108,16 @@ export default function InterviewRoomPage() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: 640, height: 480, facingMode: "user" },
-        audio: true,
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          suppressLocalAudioPlayback: true,
+          googEchoCancellation: true,
+          googNoiseSuppression: true,
+          googHighpassFilter: true,
+          googTypingNoiseDetection: true,
+        } as any,
       });
       streamRef.current = stream;
       setPermission("granted");
