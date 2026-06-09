@@ -271,9 +271,9 @@ export default function InterviewRoomPage() {
             input_audio_transcription: { model: "whisper-1" },
             turn_detection: isVoiceMode ? {
               type: "server_vad",
-              threshold: 0.92,
-              prefix_padding_ms: 800,
-              silence_duration_ms: 2000,
+              threshold: 0.95,
+              prefix_padding_ms: 1000,
+              silence_duration_ms: 3000,
             } : null,
           }
         }));
