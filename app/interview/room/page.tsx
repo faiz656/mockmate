@@ -1,6 +1,5 @@
 "use client";
 import AlexAvatar from "@/components/AlexAvatar";
-import GazeDetector from "@/components/GazeDetector";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { buildInterviewerPrompt } from "@/lib/prompts/interviewer";
@@ -136,21 +135,13 @@ export default function InterviewRoomPage() {
   const initFaceDetection = async () => {
     try {
       const { FaceDetection } = await import("@mediapipe/face_detection");
-      const fm = new FaceDetection({
+      const fd = new FaceDetection({
         locateFile: (f: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${f}`,
       });
-      fm.setOptions({ model: "short", minDetectionConfidence: 0.5 });
-      
-      let lookAwayTimer: NodeJS.Timeout | undefined;
-      
-      fm.onResults((results: any) => {
+      fd.setOptions({ model: "short", minDetectionConfidence: 0.5 });
+      fd.onResults((results: any) => {
         const count = results.detections?.length || 0;
         setFaceCount(count);
-        
-        const canvas = document.getElementById("mockmate-canvas") as HTMLCanvasElement;
-        const ctx = canvas?.getContext("2d");
-        if (ctx) ctx.clearRect(0, 0, 640, 480);
-
         if (count === 0) {
           if (!noFaceTimerRef.current) {
             noFaceTimerRef.current = setTimeout(() => {
@@ -162,53 +153,24 @@ export default function InterviewRoomPage() {
           clearTimeout(noFaceTimerRef.current);
           noFaceTimerRef.current = undefined;
         }
-
-        if (count > 1) addFlag("multiple_faces", "Multiple people detected");
-
-        if (count === 1 && results.detections[0]) {
-          const det = results.detections[0];
-          const box = det.boundingBox;
-          
-          // Head pose from face position
-          // If face center is too far left or right = looking away
-          const faceCenterX = box.xCenter;
-          const faceCenterY = box.yCenter;
-          const faceWidth = box.width;
-          
-          // Face too small = too far, too far left/right = looking away
-          const lookingAway = faceCenterX < 0.2 || faceCenterX > 0.8 || 
-                              faceCenterY < 0.1 || faceCenterY > 0.85 ||
-                              faceWidth < 0.1;
-
-          if (lookingAway) {
-            if (!lookAwayTimer) {
-              lookAwayTimer = setTimeout(() => {
-                addFlag("no_face", "Not looking at screen");
-                lookAwayTimer = undefined;
-              }, 2000);
-            }
-          } else {
-            clearTimeout(lookAwayTimer);
-            lookAwayTimer = undefined;
-          }
-
-          // Draw box
+        if (count > 1) addFlag("multiple_faces", `Multiple people detected`);
+        const canvas = document.getElementById("mockmate-canvas") as HTMLCanvasElement;
+        if (canvas) {
+          const ctx = canvas.getContext("2d");
           if (ctx) {
-            ctx.strokeStyle = lookingAway ? "#ff4444" : "#00dbe9";
-            ctx.lineWidth = 2;
-            ctx.strokeRect(
-              (faceCenterX - faceWidth/2) * 640,
-              (faceCenterY - box.height/2) * 480,
-              faceWidth * 640,
-              box.height * 480
-            );
+            ctx.clearRect(0, 0, 640, 480);
+            results.detections?.forEach((det: any) => {
+              const b = det.boundingBox;
+              ctx.strokeStyle = count > 1 ? "#ff4444" : "#00dbe9";
+              ctx.lineWidth = 3;
+              ctx.strokeRect(b.xCenter*640-(b.width*640)/2, b.yCenter*480-(b.height*480)/2, b.width*640, b.height*480);
+            });
           }
         }
       });
-
       const detect = async () => {
         const video = document.getElementById("mockmate-webcam") as HTMLVideoElement;
-        if (video && video.readyState >= 2) await fm.send({ image: video });
+        if (video && video.readyState >= 2) await fd.send({ image: video });
         requestAnimationFrame(detect);
       };
       detect();
@@ -603,9 +565,6 @@ export default function InterviewRoomPage() {
           <div style={{position:"relative",borderRadius:12,overflow:"hidden",background:"#000",aspectRatio:"4/3"}}>
             <video id="mockmate-webcam" muted playsInline style={{width:"100%",height:"100%",objectFit:"cover",transform:"scaleX(-1)",display:"block"}}/>
             <canvas id="mockmate-canvas" width={640} height={480} style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",transform:"scaleX(-1)"}}/>
-            {permission === "granted" && <GazeDetector videoId="mockmate-webcam" canvasId="mockmate-canvas"
-              onLookAway={() => addFlag("no_face", "Not looking at screen")}
-              onLookBack={() => {}} />}
             <div style={{position:"absolute",bottom:6,left:6,display:"flex",alignItems:"center",gap:4,padding:"2px 7px",borderRadius:9999,background:"rgba(0,0,0,0.75)"}}>
               <div style={{width:5,height:5,borderRadius:"50%",background:faceColor,animation:"pulse 1.5s infinite"}}/>
               <span style={{fontSize:8,fontFamily:"JetBrains Mono, monospace",color:faceColor}}>{faceCount===1?"FACE OK":faceCount===0?"NO FACE":"MULTIPLE"}</span>
