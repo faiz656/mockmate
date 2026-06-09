@@ -1,5 +1,6 @@
 "use client";
 import AlexAvatar from "@/components/AlexAvatar";
+import GazeDetector from "@/components/GazeDetector";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { buildInterviewerPrompt } from "@/lib/prompts/interviewer";
@@ -602,6 +603,9 @@ export default function InterviewRoomPage() {
           <div style={{position:"relative",borderRadius:12,overflow:"hidden",background:"#000",aspectRatio:"4/3"}}>
             <video id="mockmate-webcam" muted playsInline style={{width:"100%",height:"100%",objectFit:"cover",transform:"scaleX(-1)",display:"block"}}/>
             <canvas id="mockmate-canvas" width={640} height={480} style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",transform:"scaleX(-1)"}}/>
+            {permission === "granted" && <GazeDetector videoId="mockmate-webcam" canvasId="mockmate-canvas"
+              onLookAway={() => addFlag("no_face", "Not looking at screen")}
+              onLookBack={() => {}} />}
             <div style={{position:"absolute",bottom:6,left:6,display:"flex",alignItems:"center",gap:4,padding:"2px 7px",borderRadius:9999,background:"rgba(0,0,0,0.75)"}}>
               <div style={{width:5,height:5,borderRadius:"50%",background:faceColor,animation:"pulse 1.5s infinite"}}/>
               <span style={{fontSize:8,fontFamily:"JetBrains Mono, monospace",color:faceColor}}>{faceCount===1?"FACE OK":faceCount===0?"NO FACE":"MULTIPLE"}</span>
