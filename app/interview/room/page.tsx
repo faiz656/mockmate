@@ -139,6 +139,8 @@ export default function InterviewRoomPage() {
         locateFile: (f: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${f}`,
       });
       fd.setOptions({ model: "short", minDetectionConfidence: 0.5 });
+      let gazeAwayTimer: NodeJS.Timeout | undefined;
+      let gazeAway = false;
       fd.onResults((results: any) => {
         const count = results.detections?.length || 0;
         setFaceCount(count);
@@ -153,18 +155,86 @@ export default function InterviewRoomPage() {
           clearTimeout(noFaceTimerRef.current);
           noFaceTimerRef.current = undefined;
         }
-        if (count > 1) addFlag("multiple_faces", `Multiple people detected`);
+        if (count > 1) addFlag("multiple_faces", "Multiple people detected");
+
         const canvas = document.getElementById("mockmate-canvas") as HTMLCanvasElement;
-        if (canvas) {
-          const ctx = canvas.getContext("2d");
+        const ctx = canvas?.getContext("2d");
+        if (ctx) ctx.clearRect(0, 0, 640, 480);
+
+        if (count === 1 && results.detections[0]) {
+          const det = results.detections[0];
+          const b = det.boundingBox;
+
+          // Face center normalized 0-1
+          const cx = b.xCenter;
+          const cy = b.yCenter;
+          const fw = b.width;
+
+          // keypoints: [0]=rightEye [1]=leftEye [2]=noseTip [3]=mouth [4]=rightEar [5]=leftEar
+          const kp = det.landmarks || [];
+          const rightEye = kp[0]; // {x, y}
+          const leftEye = kp[1];
+          const noseTip = kp[2];
+
+          let lookingAway = false;
+          let gazeReason = "";
+
+          // 1. Face too far left or right
+          if (cx < 0.25 || cx > 0.75) { lookingAway = true; gazeReason = "Face not centered"; }
+          // 2. Face too small (too far from camera)
+          else if (fw < 0.12) { lookingAway = true; gazeReason = "Too far from camera"; }
+          // 3. Eyes asymmetry — if one eye is much higher than other = head tilted away
+          else if (rightEye && leftEye) {
+            const eyeYDiff = Math.abs(rightEye.y - leftEye.y);
+            const eyeXDist = Math.abs(rightEye.x - leftEye.x);
+            // If eyes are very close horizontally = face turned sideways
+            if (eyeXDist < 0.04) { lookingAway = true; gazeReason = "Looking sideways"; }
+            // If eyes very uneven vertically = head tilted
+            else if (eyeYDiff > 0.06) { lookingAway = true; gazeReason = "Head tilted away"; }
+          }
+          // 4. Nose outside eye midpoint = looking sideways
+          if (!lookingAway && rightEye && leftEye && noseTip) {
+            const eyeMidX = (rightEye.x + leftEye.x) / 2;
+            if (Math.abs(noseTip.x - eyeMidX) > 0.06) { lookingAway = true; gazeReason = "Looking sideways"; }
+          }
+
+          // Gaze flag handling
+          if (lookingAway && !gazeAway) {
+            if (!gazeAwayTimer) {
+              gazeAwayTimer = setTimeout(() => {
+                gazeAway = true;
+                addFlag("no_face", gazeReason || "Not looking at screen");
+                gazeAwayTimer = undefined;
+              }, 2500);
+            }
+          } else if (!lookingAway) {
+            clearTimeout(gazeAwayTimer);
+            gazeAwayTimer = undefined;
+            gazeAway = false;
+          }
+
+          // Draw face box and eye dots
           if (ctx) {
-            ctx.clearRect(0, 0, 640, 480);
-            results.detections?.forEach((det: any) => {
-              const b = det.boundingBox;
-              ctx.strokeStyle = count > 1 ? "#ff4444" : "#00dbe9";
-              ctx.lineWidth = 3;
-              ctx.strokeRect(b.xCenter*640-(b.width*640)/2, b.yCenter*480-(b.height*480)/2, b.width*640, b.height*480);
-            });
+            const color = lookingAway ? "#ff4444" : "#00dbe9";
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(
+              (cx - fw/2) * 640, (cy - b.height/2) * 480,
+              fw * 640, b.height * 480
+            );
+            // Draw eye landmarks
+            if (rightEye && leftEye) {
+              [rightEye, leftEye].forEach(eye => {
+                ctx.beginPath();
+                ctx.arc(eye.x * 640, eye.y * 480, 5, 0, Math.PI * 2);
+                ctx.fillStyle = color;
+                ctx.fill();
+              });
+            }
+            // Gaze status text
+            ctx.fillStyle = color;
+            ctx.font = "bold 10px monospace";
+            ctx.fillText(lookingAway ? `⚠ ${gazeReason}` : "✓ GAZE OK", 6, 16);
           }
         }
       });
