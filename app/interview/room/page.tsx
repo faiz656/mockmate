@@ -134,14 +134,22 @@ export default function InterviewRoomPage() {
 
   const initFaceDetection = async () => {
     try {
-      const { FaceDetection } = await import("@mediapipe/face_detection");
-      const fd = new FaceDetection({
-        locateFile: (f: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${f}`,
+      const { FaceMesh } = await import("@mediapipe/face_mesh");
+      const fm = new FaceMesh({
+        locateFile: (f: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`,
       });
-      fd.setOptions({ model: "short", minDetectionConfidence: 0.5 });
-      fd.onResults((results: any) => {
-        const count = results.detections?.length || 0;
+      fm.setOptions({ maxNumFaces: 2, refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+      
+      let lookAwayTimer: NodeJS.Timeout | undefined;
+      
+      fm.onResults((results: any) => {
+        const count = results.multiFaceLandmarks?.length || 0;
         setFaceCount(count);
+        
+        const canvas = document.getElementById("mockmate-canvas") as HTMLCanvasElement;
+        const ctx = canvas?.getContext("2d");
+        if (ctx) ctx.clearRect(0, 0, 640, 480);
+
         if (count === 0) {
           if (!noFaceTimerRef.current) {
             noFaceTimerRef.current = setTimeout(() => {
@@ -153,24 +161,68 @@ export default function InterviewRoomPage() {
           clearTimeout(noFaceTimerRef.current);
           noFaceTimerRef.current = undefined;
         }
-        if (count > 1) addFlag("multiple_faces", `Multiple people detected`);
-        const canvas = document.getElementById("mockmate-canvas") as HTMLCanvasElement;
-        if (canvas) {
-          const ctx = canvas.getContext("2d");
-          if (ctx) {
-            ctx.clearRect(0, 0, 640, 480);
-            results.detections?.forEach((det: any) => {
-              const b = det.boundingBox;
-              ctx.strokeStyle = count > 1 ? "#ff4444" : "#00dbe9";
-              ctx.lineWidth = 3;
-              ctx.strokeRect(b.xCenter*640-(b.width*640)/2, b.yCenter*480-(b.height*480)/2, b.width*640, b.height*480);
-            });
+
+        if (count > 1) addFlag("multiple_faces", "Multiple people detected");
+
+        if (count === 1 && results.multiFaceLandmarks[0]) {
+          const landmarks = results.multiFaceLandmarks[0];
+          
+          // Gaze detection using iris landmarks
+          // Left iris: 468-472, Right iris: 473-477
+          // Eye corners: left eye: 33(left), 133(right), right eye: 362(left), 263(right)
+          const leftIris = landmarks[468];
+          const rightIris = landmarks[473];
+          const leftEyeLeft = landmarks[33];
+          const leftEyeRight = landmarks[133];
+          const rightEyeLeft = landmarks[362];
+          const rightEyeRight = landmarks[263];
+
+          if (leftIris && rightIris && leftEyeLeft && leftEyeRight) {
+            // Calculate gaze ratio for each eye
+            const leftEyeWidth = Math.abs(leftEyeRight.x - leftEyeLeft.x);
+            const leftGaze = leftEyeWidth > 0 ? (leftIris.x - leftEyeLeft.x) / leftEyeWidth : 0.5;
+            const rightEyeWidth = Math.abs(rightEyeRight.x - rightEyeLeft.x);
+            const rightGaze = rightEyeWidth > 0 ? (rightIris.x - rightEyeLeft.x) / rightEyeWidth : 0.5;
+            const avgGaze = (leftGaze + rightGaze) / 2;
+
+            // Head pose using nose tip and chin
+            const noseTip = landmarks[1];
+            const chin = landmarks[152];
+            const headTilt = noseTip && chin ? Math.abs(noseTip.x - chin.x) : 0;
+
+            const lookingAway = avgGaze < 0.25 || avgGaze > 0.75 || headTilt > 0.15;
+
+            if (lookingAway) {
+              if (!lookAwayTimer) {
+                lookAwayTimer = setTimeout(() => {
+                  addFlag("no_face", "Not looking at screen");
+                  lookAwayTimer = undefined;
+                }, 2000);
+              }
+            } else {
+              clearTimeout(lookAwayTimer);
+              lookAwayTimer = undefined;
+            }
+
+            // Draw gaze indicator
+            if (ctx) {
+              const gazeColor = lookingAway ? "#ff4444" : "#00dbe9";
+              ctx.beginPath();
+              ctx.arc(leftIris.x * 640, leftIris.y * 480, 4, 0, Math.PI * 2);
+              ctx.fillStyle = gazeColor;
+              ctx.fill();
+              ctx.beginPath();
+              ctx.arc(rightIris.x * 640, rightIris.y * 480, 4, 0, Math.PI * 2);
+              ctx.fillStyle = gazeColor;
+              ctx.fill();
+            }
           }
         }
       });
+
       const detect = async () => {
         const video = document.getElementById("mockmate-webcam") as HTMLVideoElement;
-        if (video && video.readyState >= 2) await fd.send({ image: video });
+        if (video && video.readyState >= 2) await fm.send({ image: video });
         requestAnimationFrame(detect);
       };
       detect();
