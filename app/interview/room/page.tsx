@@ -245,22 +245,21 @@ export default function InterviewRoomPage() {
       dc.onopen = () => {
         setConnected(true);
         setStatus("listening");
-        // Send session config
+        const isVoiceMode = !pushToTalk;
         dc.send(JSON.stringify({
           type: "session.update",
           session: {
             instructions: buildInterviewerPrompt(cfg),
-            voice: "nova",
+            voice: "alloy",
             input_audio_transcription: { model: "whisper-1" },
-            turn_detection: pushToTalk ? null : {
+            turn_detection: isVoiceMode ? {
               type: "server_vad",
               threshold: 0.92,
               prefix_padding_ms: 800,
               silence_duration_ms: 2000,
-            },
+            } : null,
           }
         }));
-        // Trigger Alex to speak first
         setTimeout(() => {
           dc.send(JSON.stringify({ type: "response.create" }));
         }, 500);
@@ -383,20 +382,24 @@ export default function InterviewRoomPage() {
 
   const startPTT = useCallback(() => {
     if (!dcRef.current || dcRef.current.readyState !== "open") return;
+    if (isBusyRef.current) return;
     setIsPressing(true);
     setIsRecording(true);
-    // Tell OpenAI to start listening
     dcRef.current.send(JSON.stringify({ type: "input_audio_buffer.clear" }));
   }, []);
 
   const stopPTT = useCallback(() => {
     if (!dcRef.current || dcRef.current.readyState !== "open") return;
+    if (!isPressing) return;
     setIsPressing(false);
     setIsRecording(false);
-    // Commit the audio and trigger response
     dcRef.current.send(JSON.stringify({ type: "input_audio_buffer.commit" }));
-    dcRef.current.send(JSON.stringify({ type: "response.create" }));
-  }, []);
+    setTimeout(() => {
+      if (dcRef.current?.readyState === "open") {
+        dcRef.current.send(JSON.stringify({ type: "response.create" }));
+      }
+    }, 200);
+  }, [isPressing]);
 
   const endInterview = async () => {
     clearInterval(timerRef.current);
