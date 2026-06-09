@@ -382,7 +382,7 @@ export default function InterviewRoomPage() {
 
   const startPTT = useCallback(() => {
     if (!dcRef.current || dcRef.current.readyState !== "open") return;
-    if (isBusyRef.current) return;
+
     setIsPressing(true);
     setIsRecording(true);
     dcRef.current.send(JSON.stringify({ type: "input_audio_buffer.clear" }));
