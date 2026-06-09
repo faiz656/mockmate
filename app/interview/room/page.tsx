@@ -43,6 +43,10 @@ export default function InterviewRoomPage() {
   const statusRef = useRef(status);
   const isRecordingRef = useRef(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [pushToTalk, setPushToTalk] = useState(false);
+  const [isPressing, setIsPressing] = useState(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const processorRef = useRef<ScriptProcessorNode | null>(null);
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
   useEffect(() => { flagsRef.current = proctoringFlags; }, [proctoringFlags]);
@@ -248,11 +252,11 @@ export default function InterviewRoomPage() {
             instructions: buildInterviewerPrompt(cfg),
             voice: "nova",
             input_audio_transcription: { model: "whisper-1" },
-            turn_detection: {
+            turn_detection: pushToTalk ? null : {
               type: "server_vad",
-              threshold: 0.85,
-              prefix_padding_ms: 600,
-              silence_duration_ms: 1500,
+              threshold: 0.92,
+              prefix_padding_ms: 800,
+              silence_duration_ms: 2000,
             },
           }
         }));
@@ -375,6 +379,23 @@ export default function InterviewRoomPage() {
         }, 1000);
         break;
     }
+  }, []);
+
+  const startPTT = useCallback(() => {
+    if (!dcRef.current || dcRef.current.readyState !== "open") return;
+    setIsPressing(true);
+    setIsRecording(true);
+    // Tell OpenAI to start listening
+    dcRef.current.send(JSON.stringify({ type: "input_audio_buffer.clear" }));
+  }, []);
+
+  const stopPTT = useCallback(() => {
+    if (!dcRef.current || dcRef.current.readyState !== "open") return;
+    setIsPressing(false);
+    setIsRecording(false);
+    // Commit the audio and trigger response
+    dcRef.current.send(JSON.stringify({ type: "input_audio_buffer.commit" }));
+    dcRef.current.send(JSON.stringify({ type: "response.create" }));
   }, []);
 
   const endInterview = async () => {
@@ -597,25 +618,61 @@ export default function InterviewRoomPage() {
           </div>
 
           <div style={{borderTop:"1px solid rgba(255,255,255,0.05)",background:"rgba(12,14,18,0.98)",padding:"14px 18px"}}>
-            <div style={{display:"flex",alignItems:"center",gap:10,justifyContent:"center"}}>
-              <div style={{position:"relative"}}>
-                {isRecording&&<div style={{position:"absolute",inset:-8,borderRadius:"50%",border:"2px solid #f95e14",animation:"ripple 1s infinite"}}/>}
-                {isRecording&&<div style={{position:"absolute",inset:-16,borderRadius:"50%",border:"1px solid #f95e14",animation:"ripple 1s infinite 0.4s"}}/>}
-                <div style={{width:48,height:48,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,
-                  background:isRecording?"rgba(249,94,20,0.2)":connected?"rgba(0,219,233,0.08)":"rgba(255,255,255,0.04)",
-                  border:`2px solid ${isRecording?"rgba(249,94,20,0.6)":connected?"rgba(0,219,233,0.3)":"rgba(255,255,255,0.1)"}`}}>
-                  {isRecording?"🔴":"🎤"}
-                </div>
-              </div>
-              <div style={{textAlign:"left"}}>
-                <p style={{fontSize:13,color:isRecording?"#f95e14":connected?"#00dbe9":"#849495",fontWeight:600,marginBottom:2}}>
-                  {!connected?"Connecting...":isRecording?"Recording your answer...":status==="speaking"?"Alex is speaking...":"Speak naturally — Alex will respond"}
-                </p>
-                <p style={{fontSize:10,color:"#3a4855",fontFamily:"JetBrains Mono, monospace",letterSpacing:"0.06em"}}>
-                  OPENAI REALTIME · NO NEED TO PRESS ANYTHING · JUST TALK
-                </p>
+            {/* Mode toggle */}
+            <div style={{display:"flex",justifyContent:"center",marginBottom:10}}>
+              <div style={{display:"flex",background:"rgba(255,255,255,0.04)",borderRadius:9999,padding:3,border:"1px solid rgba(255,255,255,0.08)"}}>
+                <button onClick={()=>setPushToTalk(false)}
+                  style={{padding:"5px 16px",borderRadius:9999,border:"none",cursor:"pointer",fontSize:10,fontFamily:"JetBrains Mono, monospace",letterSpacing:"0.06em",fontWeight:600,
+                    background:!pushToTalk?"rgba(0,219,233,0.15)":"transparent",
+                    color:!pushToTalk?"#00dbe9":"#849495"}}>
+                  AUTO
+                </button>
+                <button onClick={()=>setPushToTalk(true)}
+                  style={{padding:"5px 16px",borderRadius:9999,border:"none",cursor:"pointer",fontSize:10,fontFamily:"JetBrains Mono, monospace",letterSpacing:"0.06em",fontWeight:600,
+                    background:pushToTalk?"rgba(249,94,20,0.15)":"transparent",
+                    color:pushToTalk?"#f95e14":"#849495"}}>
+                  PUSH TO TALK
+                </button>
               </div>
             </div>
+
+            {pushToTalk ? (
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
+                <button
+                  onMouseDown={startPTT} onMouseUp={stopPTT}
+                  onTouchStart={e=>{e.preventDefault();startPTT();}} onTouchEnd={e=>{e.preventDefault();stopPTT();}}
+                  style={{width:72,height:72,borderRadius:"50%",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,
+                    background:isPressing?"rgba(249,94,20,0.3)":"rgba(255,255,255,0.06)",
+                    boxShadow:isPressing?"0 0 30px rgba(249,94,20,0.5)":"none",
+                    border:`3px solid ${isPressing?"rgba(249,94,20,0.8)":"rgba(255,255,255,0.15)"}`,
+                    transition:"all 0.1s",transform:isPressing?"scale(0.95)":"scale(1)"}}>
+                  🎤
+                </button>
+                <p style={{fontSize:11,color:isPressing?"#f95e14":"#849495",fontFamily:"JetBrains Mono, monospace",letterSpacing:"0.06em"}}>
+                  {isPressing?"RECORDING — RELEASE TO SEND":"HOLD TO SPEAK"}
+                </p>
+              </div>
+            ) : (
+              <div style={{display:"flex",alignItems:"center",gap:10,justifyContent:"center"}}>
+                <div style={{position:"relative"}}>
+                  {isRecording&&<div style={{position:"absolute",inset:-8,borderRadius:"50%",border:"2px solid #f95e14",animation:"ripple 1s infinite"}}/>}
+                  {isRecording&&<div style={{position:"absolute",inset:-16,borderRadius:"50%",border:"1px solid #f95e14",animation:"ripple 1s infinite 0.4s"}}/>}
+                  <div style={{width:48,height:48,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,
+                    background:isRecording?"rgba(249,94,20,0.2)":connected?"rgba(0,219,233,0.08)":"rgba(255,255,255,0.04)",
+                    border:`2px solid ${isRecording?"rgba(249,94,20,0.6)":connected?"rgba(0,219,233,0.3)":"rgba(255,255,255,0.1)"}`}}>
+                    {isRecording?"🔴":"🎤"}
+                  </div>
+                </div>
+                <div style={{textAlign:"left"}}>
+                  <p style={{fontSize:13,color:isRecording?"#f95e14":connected?"#00dbe9":"#849495",fontWeight:600,marginBottom:2}}>
+                    {!connected?"Connecting...":isRecording?"Recording...":status==="speaking"?"Alex is speaking...":"Speak naturally"}
+                  </p>
+                  <p style={{fontSize:10,color:"#3a4855",fontFamily:"JetBrains Mono, monospace",letterSpacing:"0.06em"}}>
+                    AUTO MODE · JUST TALK
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </main>
