@@ -10,138 +10,124 @@ interface GazeDetectorProps {
 
 export default function GazeDetector({ videoId, canvasId, onLookAway, onLookBack }: GazeDetectorProps) {
   const lookAwayTimer = useRef<NodeJS.Timeout>();
-  const isLookingAway = useRef(false);
+  const isLookingAwayRef = useRef(false);
 
   useEffect(() => {
     let running = true;
-    let detector: any = null;
+    let model: any = null;
 
     const init = async () => {
       try {
         const tf = await import("@tensorflow/tfjs");
         await tf.ready();
-
-        const faceLandmarksDetection = await import("@tensorflow-models/face-landmarks-detection");
-        detector = await faceLandmarksDetection.createDetector(
-          faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
-          {
-            runtime: "tfjs",
-            refineLandmarks: true,
-            maxFaces: 1,
-          }
-        );
+        const blazeface = await import("@tensorflow-models/blazeface");
+        model = await blazeface.load();
 
         const detect = async () => {
           if (!running) return;
           const video = document.getElementById(videoId) as HTMLVideoElement;
           const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
-          
-          if (!video || video.readyState < 2 || !detector) {
+
+          if (!video || video.readyState < 2 || !model) {
             requestAnimationFrame(detect);
             return;
           }
 
           try {
-            const faces = await detector.estimateFaces(video, { flipHorizontal: true });
+            const predictions = await model.estimateFaces(video, false);
             const ctx = canvas?.getContext("2d");
-            if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            if (faces.length === 0) {
+            if (predictions.length === 0) {
               requestAnimationFrame(detect);
               return;
             }
 
-            const face = faces[0];
-            const keypoints = face.keypoints;
+            const face = predictions[0];
+            // BlazeFace landmarks: [rightEye, leftEye, nose, mouth, rightEar, leftEar]
+            const landmarks = face.landmarks as number[][];
+            const rightEye = landmarks[0]; // [x, y]
+            const leftEye = landmarks[1];  // [x, y]
 
-            // Get iris keypoints (refined landmarks)
-            // Left iris center: index 468, Right iris center: 473
-            // Left eye corners: 33 (left), 133 (right)
-            // Right eye corners: 362 (left), 263 (right)
-            const leftIris = keypoints.find((k: any) => k.name === "leftEyeIris");
-            const rightIris = keypoints.find((k: any) => k.name === "rightEyeIris");
-            
-            // Fallback to index-based
-            const lIris = leftIris || keypoints[468];
-            const rIris = rightIris || keypoints[473];
+            const videoW = video.videoWidth || 640;
+            const videoH = video.videoHeight || 480;
 
-            // Eye corners
-            const lEyeOuter = keypoints[33];
-            const lEyeInner = keypoints[133];
-            const rEyeOuter = keypoints[263];
-            const rEyeInner = keypoints[362];
+            // Face bounding box
+            const topLeft = face.topLeft as number[];
+            const bottomRight = face.bottomRight as number[];
+            const faceW = bottomRight[0] - topLeft[0];
+            const faceCenterX = (topLeft[0] + bottomRight[0]) / 2 / videoW;
+            const faceCenterY = (topLeft[1] + bottomRight[1]) / 2 / videoH;
+            const faceSize = faceW / videoW;
 
-            let lookingAway = false;
+            // Eye positions relative to face
+            const eyeCenterX = ((rightEye[0] + leftEye[0]) / 2) / videoW;
 
-            if (lIris && rIris && lEyeOuter && lEyeInner) {
-              // Gaze ratio: 0=far left, 0.5=center, 1=far right
-              const lWidth = Math.abs(lEyeInner.x - lEyeOuter.x);
-              const rWidth = Math.abs(rEyeInner.x - rEyeOuter.x);
-              
-              const lRatio = lWidth > 0 ? (lIris.x - lEyeOuter.x) / lWidth : 0.5;
-              const rRatio = rWidth > 0 ? (rIris.x - rEyeOuter.x) / rWidth : 0.5;
-              const avgRatio = (lRatio + rRatio) / 2;
+            // Gaze logic:
+            // Face must be centered (0.25 - 0.75 range)
+            // Eyes must be in upper portion of frame
+            // Face must be large enough (not too far away)
+            const lookingAway = 
+              faceCenterX < 0.2 || faceCenterX > 0.8 ||  // too far left/right
+              faceCenterY < 0.15 || faceCenterY > 0.8 ||  // too far up/down
+              faceSize < 0.12 ||                           // too far from camera
+              Math.abs(eyeCenterX - faceCenterX) > 0.15;  // eyes not centered on face
 
-              // Vertical gaze
-              const lEyeTop = keypoints[159];
-              const lEyeBot = keypoints[145];
-              const lHeight = lEyeTop && lEyeBot ? Math.abs(lEyeBot.y - lEyeTop.y) : 20;
-              const lVRatio = lEyeTop ? (lIris.y - lEyeTop.y) / lHeight : 0.5;
+            // Draw on canvas
+            if (ctx) {
+              const scaleX = canvas.width / videoW;
+              const scaleY = canvas.height / videoH;
+              const color = lookingAway ? "#ff4444" : "#00dbe9";
 
-              // Looking away if gaze too far left/right/up/down
-              lookingAway = avgRatio < 0.25 || avgRatio > 0.75 || lVRatio < 0.1 || lVRatio > 0.9;
-
-              // Draw iris dots
-              if (ctx) {
-                const color = lookingAway ? "#ff4444" : "#00dbe9";
-                [lIris, rIris].forEach(iris => {
-                  ctx.beginPath();
-                  ctx.arc(iris.x, iris.y, 5, 0, Math.PI * 2);
-                  ctx.fillStyle = color;
-                  ctx.fill();
-                  ctx.beginPath();
-                  ctx.arc(iris.x, iris.y, 10, 0, Math.PI * 2);
-                  ctx.strokeStyle = color;
-                  ctx.lineWidth = 1.5;
-                  ctx.stroke();
-                });
-                
-                // Gaze direction indicator
+              // Draw eye dots
+              [rightEye, leftEye].forEach(eye => {
+                ctx.beginPath();
+                ctx.arc(eye[0] * scaleX, eye[1] * scaleY, 5, 0, Math.PI * 2);
                 ctx.fillStyle = color;
-                ctx.font = "12px JetBrains Mono";
-                ctx.fillText(lookingAway ? "LOOK AT SCREEN" : "GAZE OK", 10, 20);
-              }
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(eye[0] * scaleX, eye[1] * scaleY, 12, 0, Math.PI * 2);
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+              });
+
+              // Status text
+              ctx.fillStyle = color;
+              ctx.font = "bold 11px monospace";
+              ctx.fillText(lookingAway ? "⚠ LOOK AT SCREEN" : "✓ GAZE OK", 8, 20);
             }
 
-            if (lookingAway && !isLookingAway.current) {
-              lookAwayTimer.current = setTimeout(() => {
-                isLookingAway.current = true;
-                onLookAway();
-              }, 2000);
-            } else if (!lookingAway && isLookingAway.current) {
-              clearTimeout(lookAwayTimer.current);
-              isLookingAway.current = false;
-              onLookBack();
+            if (lookingAway && !isLookingAwayRef.current) {
+              if (!lookAwayTimer.current) {
+                lookAwayTimer.current = setTimeout(() => {
+                  isLookingAwayRef.current = true;
+                  onLookAway();
+                  lookAwayTimer.current = undefined;
+                }, 2500);
+              }
             } else if (!lookingAway) {
               clearTimeout(lookAwayTimer.current);
+              lookAwayTimer.current = undefined;
+              if (isLookingAwayRef.current) {
+                isLookingAwayRef.current = false;
+                onLookBack();
+              }
             }
-
           } catch {}
-          
+
           requestAnimationFrame(detect);
         };
 
         detect();
       } catch (e) {
-        console.error("Gaze detection init failed:", e);
+        console.error("Gaze detection failed:", e);
       }
     };
 
     init();
-    return () => { 
-      running = false; 
+    return () => {
+      running = false;
       clearTimeout(lookAwayTimer.current);
-      if (detector) detector.dispose?.();
     };
   }, [videoId, canvasId, onLookAway, onLookBack]);
 
