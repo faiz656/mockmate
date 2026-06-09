@@ -118,7 +118,7 @@ export default function ResultsPage() {
     </div>
   );
 
-  const overall = feedback?.overall_score ?? feedback?.scores?.overall ?? 0;
+  const overall = (feedback as any)?.overall_score ?? feedback?.scores?.overall ?? 0;
   const ringCircumference = 2 * Math.PI * 70;
   const ringOffset = ringCircumference - (overall / 100) * ringCircumference;
   const proctoringScore = proctoring ? Math.max(0, 100 - (proctoring.tab_switches * 15) - (proctoring.total_flags * 10)) : null;
