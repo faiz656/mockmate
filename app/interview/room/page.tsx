@@ -134,16 +134,16 @@ export default function InterviewRoomPage() {
 
   const initFaceDetection = async () => {
     try {
-      const { FaceMesh } = await import("@mediapipe/face_mesh");
-      const fm = new FaceMesh({
-        locateFile: (f: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`,
+      const { FaceDetection } = await import("@mediapipe/face_detection");
+      const fm = new FaceDetection({
+        locateFile: (f: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${f}`,
       });
-      fm.setOptions({ maxNumFaces: 2, refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+      fm.setOptions({ model: "short", minDetectionConfidence: 0.5 });
       
       let lookAwayTimer: NodeJS.Timeout | undefined;
       
       fm.onResults((results: any) => {
-        const count = results.multiFaceLandmarks?.length || 0;
+        const count = results.detections?.length || 0;
         setFaceCount(count);
         
         const canvas = document.getElementById("mockmate-canvas") as HTMLCanvasElement;
@@ -164,58 +164,43 @@ export default function InterviewRoomPage() {
 
         if (count > 1) addFlag("multiple_faces", "Multiple people detected");
 
-        if (count === 1 && results.multiFaceLandmarks[0]) {
-          const landmarks = results.multiFaceLandmarks[0];
+        if (count === 1 && results.detections[0]) {
+          const det = results.detections[0];
+          const box = det.boundingBox;
           
-          // Gaze detection using iris landmarks
-          // Left iris: 468-472, Right iris: 473-477
-          // Eye corners: left eye: 33(left), 133(right), right eye: 362(left), 263(right)
-          const leftIris = landmarks[468];
-          const rightIris = landmarks[473];
-          const leftEyeLeft = landmarks[33];
-          const leftEyeRight = landmarks[133];
-          const rightEyeLeft = landmarks[362];
-          const rightEyeRight = landmarks[263];
+          // Head pose from face position
+          // If face center is too far left or right = looking away
+          const faceCenterX = box.xCenter;
+          const faceCenterY = box.yCenter;
+          const faceWidth = box.width;
+          
+          // Face too small = too far, too far left/right = looking away
+          const lookingAway = faceCenterX < 0.2 || faceCenterX > 0.8 || 
+                              faceCenterY < 0.1 || faceCenterY > 0.85 ||
+                              faceWidth < 0.1;
 
-          if (leftIris && rightIris && leftEyeLeft && leftEyeRight) {
-            // Calculate gaze ratio for each eye
-            const leftEyeWidth = Math.abs(leftEyeRight.x - leftEyeLeft.x);
-            const leftGaze = leftEyeWidth > 0 ? (leftIris.x - leftEyeLeft.x) / leftEyeWidth : 0.5;
-            const rightEyeWidth = Math.abs(rightEyeRight.x - rightEyeLeft.x);
-            const rightGaze = rightEyeWidth > 0 ? (rightIris.x - rightEyeLeft.x) / rightEyeWidth : 0.5;
-            const avgGaze = (leftGaze + rightGaze) / 2;
-
-            // Head pose using nose tip and chin
-            const noseTip = landmarks[1];
-            const chin = landmarks[152];
-            const headTilt = noseTip && chin ? Math.abs(noseTip.x - chin.x) : 0;
-
-            const lookingAway = avgGaze < 0.25 || avgGaze > 0.75 || headTilt > 0.15;
-
-            if (lookingAway) {
-              if (!lookAwayTimer) {
-                lookAwayTimer = setTimeout(() => {
-                  addFlag("no_face", "Not looking at screen");
-                  lookAwayTimer = undefined;
-                }, 2000);
-              }
-            } else {
-              clearTimeout(lookAwayTimer);
-              lookAwayTimer = undefined;
+          if (lookingAway) {
+            if (!lookAwayTimer) {
+              lookAwayTimer = setTimeout(() => {
+                addFlag("no_face", "Not looking at screen");
+                lookAwayTimer = undefined;
+              }, 2000);
             }
+          } else {
+            clearTimeout(lookAwayTimer);
+            lookAwayTimer = undefined;
+          }
 
-            // Draw gaze indicator
-            if (ctx) {
-              const gazeColor = lookingAway ? "#ff4444" : "#00dbe9";
-              ctx.beginPath();
-              ctx.arc(leftIris.x * 640, leftIris.y * 480, 4, 0, Math.PI * 2);
-              ctx.fillStyle = gazeColor;
-              ctx.fill();
-              ctx.beginPath();
-              ctx.arc(rightIris.x * 640, rightIris.y * 480, 4, 0, Math.PI * 2);
-              ctx.fillStyle = gazeColor;
-              ctx.fill();
-            }
+          // Draw box
+          if (ctx) {
+            ctx.strokeStyle = lookingAway ? "#ff4444" : "#00dbe9";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(
+              (faceCenterX - faceWidth/2) * 640,
+              (faceCenterY - box.height/2) * 480,
+              faceWidth * 640,
+              box.height * 480
+            );
           }
         }
       });
