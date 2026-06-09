@@ -38,6 +38,8 @@ export default function InterviewRoomPage() {
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
   const dcRef = useRef<RTCDataChannel | null>(null);
+  const gainNodeRef = useRef<GainNode | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
   const configRef = useRef<InterviewConfig | null>(null);
   const messagesRef = useRef<TranscriptEntry[]>([]);
   const statusRef = useRef(status);
@@ -55,11 +57,9 @@ export default function InterviewRoomPage() {
   useEffect(() => { isRecordingRef.current = isRecording; }, [isRecording]);
   useEffect(() => { 
     pushToTalkRef.current = pushToTalk;
-    // When switching modes, update mic state
-    if (streamRef.current) {
-      streamRef.current.getAudioTracks().forEach(t => { 
-        t.enabled = !pushToTalk; // auto=enabled, PTT=disabled
-      });
+    // When switching modes, update gain
+    if (gainNodeRef.current) {
+      gainNodeRef.current.gain.value = pushToTalk ? 0 : 1;
     }
   }, [pushToTalk]);
 
@@ -321,11 +321,20 @@ export default function InterviewRoomPage() {
       audioElRef.current = audioEl;
       pc.ontrack = (e) => { audioEl.srcObject = e.streams[0]; };
 
-      // Add mic track - muted if PTT mode
+      // Add mic through gain node for true volume control
       if (streamRef.current) {
-        const audioTrack = streamRef.current.getAudioTracks()[0];
-        if (pushToTalk) audioTrack.enabled = false;
-        pc.addTrack(audioTrack, streamRef.current);
+        const audioCtx = new AudioContext();
+        audioCtxRef.current = audioCtx;
+        const source = audioCtx.createMediaStreamSource(streamRef.current);
+        const gainNode = audioCtx.createGain();
+        gainNodeRef.current = gainNode;
+        // Start muted in PTT mode
+        gainNode.gain.value = pushToTalkRef.current ? 0 : 1;
+        const destination = audioCtx.createMediaStreamDestination();
+        source.connect(gainNode);
+        gainNode.connect(destination);
+        const processedTrack = destination.stream.getAudioTracks()[0];
+        pc.addTrack(processedTrack, destination.stream);
       }
 
       // Data channel for events
@@ -336,11 +345,9 @@ export default function InterviewRoomPage() {
         setConnected(true);
         setStatus("listening");
         const isVoiceMode = !pushToTalkRef.current;
-        // Only mute if PTT mode - keep enabled for auto mode
-        if (streamRef.current) {
-          streamRef.current.getAudioTracks().forEach(t => { 
-            t.enabled = isVoiceMode; // true for auto, false for PTT
-          });
+        // Set gain based on mode
+        if (gainNodeRef.current) {
+          gainNodeRef.current.gain.value = isVoiceMode ? 1 : 0;
         }
         dc.send(JSON.stringify({
           type: "session.update",
