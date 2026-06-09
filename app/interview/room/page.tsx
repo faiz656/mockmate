@@ -43,7 +43,7 @@ export default function InterviewRoomPage() {
   const statusRef = useRef(status);
   const isRecordingRef = useRef(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [pushToTalk, setPushToTalk] = useState(false);
+  const [pushToTalk, setPushToTalk] = useState(true);
   const [isPressing, setIsPressing] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
@@ -246,7 +246,11 @@ export default function InterviewRoomPage() {
       dc.onopen = () => {
         setConnected(true);
         setStatus("listening");
+        // If PTT mode, mute mic immediately
         const isVoiceMode = !pushToTalk;
+        if (!isVoiceMode && streamRef.current) {
+          streamRef.current.getAudioTracks().forEach(t => { t.enabled = false; });
+        }
         dc.send(JSON.stringify({
           type: "session.update",
           session: {
