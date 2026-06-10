@@ -485,9 +485,7 @@ export default function InterviewRoomPage() {
 
   const startPTT = useCallback(() => {
     if (!dcRef.current || dcRef.current.readyState !== "open") return;
-    if (streamRef.current) {
-      streamRef.current.getAudioTracks().forEach(t => { t.enabled = true; });
-    }
+    if (gainNodeRef.current) gainNodeRef.current.gain.value = 1;
     dcRef.current.send(JSON.stringify({ type: "input_audio_buffer.clear" }));
     setIsPressing(true);
     setIsRecording(true);
