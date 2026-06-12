@@ -142,6 +142,7 @@ export default function SignupPage() {
                   <p style={{ fontSize: 14, color: "#849495", lineHeight: 1.6 }}>
                     We sent a 6-digit code to<br />
                     <span style={{ color: "#00dbe9", fontFamily: "JetBrains Mono, monospace" }}>{email}</span>
+              <p style={{ fontSize: 12, color: "#f95e14", marginTop: 8 }}>⚠ Check your spam folder if you don't see it</p>
                   </p>
                 </div>
 
