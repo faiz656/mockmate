@@ -47,7 +47,7 @@ export default function ContactPage() {
             </button>
             <div style={{ marginTop: 24, padding: 16, borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
               <p style={{ fontSize: 13, color: "#849495", marginBottom: 8 }}>Or reach us directly:</p>
-              <a href="mailto:contact@mockmate.pk" style={{ fontSize: 14, color: "#00dbe9", textDecoration: "none", fontFamily: "JetBrains Mono, monospace" }}>contact@mockmate.pk</a>
+              <a href="mailto:mockmatepk@gmail.com" style={{ fontSize: 14, color: "#00dbe9", textDecoration: "none", fontFamily: "JetBrains Mono, monospace" }}>mockmatepk@gmail.com</a>
             </div>
           </div>
         )}

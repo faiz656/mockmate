@@ -6,9 +6,9 @@ export default function PrivacyPage() {
     { title: "Interview Data", content: "Interview sessions are processed in real-time using OpenAI's API. Audio is transcribed and analyzed to generate feedback. We store transcripts, scores, and proctoring data (face detection results, tab switches) associated with your account. Video is analyzed locally in your browser and is not stored on our servers." },
     { title: "Data Sharing", content: "We do not sell your personal data. Interview results are shared with the company whose interview link you used. We use OpenAI for AI processing and Supabase for data storage. Both are bound by strict data protection agreements." },
     { title: "Data Security", content: "We use industry-standard encryption for data in transit and at rest. Access to your data is restricted to authorized personnel only. You can request deletion of your account and associated data at any time." },
-    { title: "Your Rights", content: "You have the right to access, correct, or delete your personal data at any time. To exercise these rights, contact us at contact@mockmate.pk. We will respond within 30 days." },
+    { title: "Your Rights", content: "You have the right to access, correct, or delete your personal data at any time. To exercise these rights, contact us at mockmatepk@gmail.com. We will respond within 30 days." },
     { title: "Cookies", content: "We use essential cookies for authentication and session management. We do not use tracking or advertising cookies." },
-    { title: "Contact", content: "For privacy-related questions, contact us at contact@mockmate.pk or through our contact page." },
+    { title: "Contact", content: "For privacy-related questions, contact us at mockmatepk@gmail.com or through our contact page." },
   ];
   return (
     <div style={{ background: "#0A0C10", color: "#e2e2e8", minHeight: "100vh", fontFamily: "Inter, sans-serif" }}>

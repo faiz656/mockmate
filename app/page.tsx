@@ -256,7 +256,7 @@ export default function LandingPage() {
               </div>
               <p style={{ fontSize: 14, color: "#849495", lineHeight: 1.7, maxWidth: 280 }}>Pakistan's first AI-powered interview simulator. Practice interviews, screen candidates, and hire smarter.</p>
               <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
-                <a href="mailto:contact@mockmate.pk" style={{ fontSize: 12, color: "#00dbe9", textDecoration: "none", fontFamily: "JetBrains Mono, monospace" }}>contact@mockmate.pk</a>
+                <a href="mailto:mockmatepk@gmail.com" style={{ fontSize: 12, color: "#00dbe9", textDecoration: "none", fontFamily: "JetBrains Mono, monospace" }}>mockmatepk@gmail.com</a>
               </div>
             </div>
 

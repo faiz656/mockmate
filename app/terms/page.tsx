@@ -10,7 +10,7 @@ export default function TermsPage() {
     { title: "Intellectual Property", content: "MockMate and its content are owned by MockMate. You may not copy, modify, or distribute our software, design, or content without permission." },
     { title: "Limitation of Liability", content: "MockMate is provided 'as is'. We are not liable for any damages arising from your use of the service, including hiring decisions made based on our platform." },
     { title: "Changes to Terms", content: "We may update these terms at any time. Continued use of MockMate after changes constitutes acceptance of the new terms." },
-    { title: "Contact", content: "For questions about these terms, contact us at contact@mockmate.pk." },
+    { title: "Contact", content: "For questions about these terms, contact us at mockmatepk@gmail.com." },
   ];
   return (
     <div style={{ background: "#0A0C10", color: "#e2e2e8", minHeight: "100vh", fontFamily: "Inter, sans-serif" }}>
