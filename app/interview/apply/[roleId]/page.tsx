@@ -13,6 +13,9 @@ export default function CandidateApplyPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [pageLoading, setPageLoading] = useState(true);
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [resumeText, setResumeText] = useState("");
+  const [resumeLoading, setResumeLoading] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -25,6 +28,24 @@ export default function CandidateApplyPage() {
         setPageLoading(false);
       });
   }, [roleId]);
+
+  const extractResume = async (file: File) => {
+    setResumeLoading(true);
+    setResumeFile(file);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/interview/resume", {
+        method: "POST",
+        body: formData,
+      });
+      if (res.ok) {
+        const { text } = await res.json();
+        setResumeText(text);
+      }
+    } catch (e) { console.error("Resume extract error:", e); }
+    setResumeLoading(false);
+  };
 
   const start = async () => {
     if (!form.name) { setError("Please enter your name"); return; }
@@ -62,6 +83,7 @@ export default function CandidateApplyPage() {
       roleId: roleId,
       companyId: role.company_id,
       candidateEmail: form.email,
+      resumeText: resumeText || undefined,
     };
 
     localStorage.setItem("interview_config", JSON.stringify(config));
@@ -159,6 +181,22 @@ export default function CandidateApplyPage() {
             <div>
               <label>Email (Optional)</label>
               <input className="input-field" type="email" placeholder="your@email.com" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
+            </div>
+            <div>
+              <label>Resume / CV (Optional — Alex will ask questions based on it)</label>
+              <div
+                onClick={() => document.getElementById("resume-upload")?.click()}
+                style={{ width: "100%", padding: "16px", borderRadius: 12, border: `2px dashed ${resumeFile ? "rgba(0,219,233,0.5)" : "rgba(255,255,255,0.1)"}`, background: resumeFile ? "rgba(0,219,233,0.04)" : "transparent", cursor: "pointer", textAlign: "center", boxSizing: "border-box" }}>
+                <input id="resume-upload" type="file" accept=".pdf,.doc,.docx" style={{ display: "none" }}
+                  onChange={e => e.target.files?.[0] && extractResume(e.target.files[0])} />
+                {resumeLoading ? (
+                  <p style={{ fontSize: 13, color: "#00dbe9" }}>Reading your CV...</p>
+                ) : resumeFile ? (
+                  <p style={{ fontSize: 13, color: "#00dbe9" }}>✓ {resumeFile.name}</p>
+                ) : (
+                  <p style={{ fontSize: 13, color: "#849495" }}>📄 Upload your CV (PDF) — optional</p>
+                )}
+              </div>
             </div>
           </div>
 
