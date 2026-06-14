@@ -31,6 +31,24 @@ export default function CandidateApplyPage() {
     setLoading(true);
     setError("");
 
+    // Check interview limit
+    const supabase = createClient();
+    const { data: companyData } = await supabase
+      .from("companies")
+      .select("interview_limit, interviews_used, plan")
+      .eq("id", role.company_id)
+      .single();
+
+    if (companyData) {
+      const used = companyData.interviews_used || 0;
+      const limit = companyData.interview_limit || 20;
+      if (used >= limit) {
+        setError(`This company has reached their interview limit (${limit} interviews). Please contact them directly.`);
+        setLoading(false);
+        return;
+      }
+    }
+
     // Build interview config from role
     const config = {
       role: role.title.toLowerCase().replace(/\s+/g, "_"),
@@ -51,6 +69,12 @@ export default function CandidateApplyPage() {
     localStorage.setItem("candidate_email", form.email);
     localStorage.setItem("applying_role_id", roleId);
     localStorage.setItem("applying_company_id", role.company_id);
+
+    // Increment interviews_used
+    const supabase2 = createClient();
+    await supabase2.from("companies").update({
+      interviews_used: (companyData?.interviews_used || 0) + 1
+    }).eq("id", role.company_id);
 
     router.push("/interview/room");
   };
