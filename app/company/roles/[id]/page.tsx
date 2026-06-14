@@ -18,6 +18,10 @@ export default function RoleDetailPage() {
   const [candidates, setCandidates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteEmails, setInviteEmails] = useState("");
+  const [inviting, setInviting] = useState(false);
+  const [inviteResult, setInviteResult] = useState<{sent:number,failed:number}|null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
 
   useEffect(() => {
@@ -85,6 +89,22 @@ export default function RoleDetailPage() {
     ? Math.round(candidates.filter(c => c.feedback?.scores?.overall).reduce((s, c) => s + c.feedback.scores.overall, 0) / candidates.filter(c => c.feedback?.scores?.overall).length)
     : 0;
 
+  const sendBulkInvite = async () => {
+    setInviting(true);
+    const emails = inviteEmails.split(/[
+,]/).map(e => e.trim()).filter(e => e.includes("@"));
+    if (!emails.length) { setInviting(false); return; }
+    const interviewUrl = `${window.location.origin}/interview/apply/${roleId}`;
+    const res = await fetch("/api/company/invite", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emails, roleId, roleName: role?.title, companyName: "Your Company", interviewUrl }),
+    });
+    const data = await res.json();
+    setInviteResult(data);
+    setInviting(false);
+  };
+
   return (
     <div style={{ background: "#0A0C10", minHeight: "100vh", color: "#e2e2e8", fontFamily: "Inter, sans-serif" }}>
       <style>{`
@@ -99,6 +119,7 @@ export default function RoleDetailPage() {
           <button onClick={() => router.push("/company/dashboard")} style={{ fontSize: 13, color: "#849495", background: "none", border: "none", cursor: "pointer", fontFamily: "JetBrains Mono, monospace" }}>← Dashboard</button>
           <div style={{ display: "flex", gap: 10 }}>
             <button onClick={exportCSV} style={{ padding: "8px 16px", borderRadius: 9999, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#e2e2e8", fontSize: 12, fontFamily: "JetBrains Mono, monospace", cursor: "pointer" }}>Export CSV</button>
+            <button onClick={() => setShowInvite(!showInvite)} style={{ padding: "8px 16px", borderRadius: 9999, background: "rgba(112,0,255,0.1)", border: "1px solid rgba(112,0,255,0.3)", color: "#d1bcff", fontSize: 12, fontFamily: "JetBrains Mono, monospace", cursor: "pointer" }}>📧 Bulk Invite</button>
             <button onClick={copyLink} style={{ padding: "8px 20px", borderRadius: 9999, border: "none", color: copied?"#00ff64":"#002022", fontSize: 12, fontWeight: 700, fontFamily: "JetBrains Mono, monospace", cursor: "pointer", background: copied?"rgba(0,255,100,0.1)":"linear-gradient(135deg,#00dbe9,#00f0ff)" }}>
               {copied ? "✓ Copied!" : "Copy Interview Link"}
             </button>
@@ -106,6 +127,40 @@ export default function RoleDetailPage() {
         </div>
       </header>
 
+      {showInvite && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div style={{ background: "#111318", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, padding: 32, width: "100%", maxWidth: 480 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: "#fff", fontFamily: "Geist, sans-serif", marginBottom: 8 }}>Bulk Invite Candidates</h2>
+            <p style={{ fontSize: 13, color: "#849495", marginBottom: 20 }}>Enter emails separated by commas or new lines. Each person will receive an interview invitation.</p>
+            {inviteResult ? (
+              <div style={{ padding: 20, borderRadius: 12, background: "rgba(0,219,233,0.06)", border: "1px solid rgba(0,219,233,0.2)", textAlign: "center", marginBottom: 20 }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
+                <p style={{ color: "#00dbe9", fontWeight: 600 }}>{inviteResult.sent} invitations sent!</p>
+                {inviteResult.failed > 0 && <p style={{ color: "#ffb4ab", fontSize: 13, marginTop: 4 }}>{inviteResult.failed} failed</p>}
+              </div>
+            ) : (
+              <textarea value={inviteEmails} onChange={e => setInviteEmails(e.target.value)}
+                placeholder={"candidate1@email.com
+candidate2@email.com
+candidate3@email.com"}
+                rows={6}
+                style={{ width: "100%", background: "rgba(10,12,16,0.8)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 14, color: "#e2e2e8", fontSize: 13, fontFamily: "JetBrains Mono, monospace", outline: "none", boxSizing: "border-box", resize: "vertical", marginBottom: 16 }} />
+            )}
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => { setShowInvite(false); setInviteResult(null); setInviteEmails(""); }}
+                style={{ flex: 1, padding: "12px", borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#e2e2e8", fontSize: 13, fontFamily: "JetBrains Mono, monospace", cursor: "pointer" }}>
+                Close
+              </button>
+              {!inviteResult && (
+                <button onClick={sendBulkInvite} disabled={inviting || !inviteEmails.trim()}
+                  style={{ flex: 2, padding: "12px", borderRadius: 10, border: "none", background: "linear-gradient(135deg, #7000ff, #9d4edd)", color: "#fff", fontSize: 13, fontWeight: 700, fontFamily: "JetBrains Mono, monospace", cursor: "pointer" }}>
+                  {inviting ? "Sending..." : `Send Invitations →`}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       <main style={{ paddingTop: 88, maxWidth: 1100, margin: "0 auto", padding: "88px 24px 60px" }}>
 
         <div style={{ marginBottom: 28 }}>
