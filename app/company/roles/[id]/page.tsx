@@ -91,8 +91,7 @@ export default function RoleDetailPage() {
 
   const sendBulkInvite = async () => {
     setInviting(true);
-    const emails = inviteEmails.split(/[
-,]/).map(e => e.trim()).filter(e => e.includes("@"));
+    const emails = inviteEmails.split(/[\r\n,]+/).map((e: string) => e.trim()).filter((e: string) => e.includes("@"));
     if (!emails.length) { setInviting(false); return; }
     const interviewUrl = `${window.location.origin}/interview/apply/${roleId}`;
     const res = await fetch("/api/company/invite", {
@@ -140,9 +139,7 @@ export default function RoleDetailPage() {
               </div>
             ) : (
               <textarea value={inviteEmails} onChange={e => setInviteEmails(e.target.value)}
-                placeholder={"candidate1@email.com
-candidate2@email.com
-candidate3@email.com"}
+                placeholder="candidate1@email.com, candidate2@email.com, candidate3@email.com"
                 rows={6}
                 style={{ width: "100%", background: "rgba(10,12,16,0.8)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 14, color: "#e2e2e8", fontSize: 13, fontFamily: "JetBrains Mono, monospace", outline: "none", boxSizing: "border-box", resize: "vertical", marginBottom: 16 }} />
             )}
