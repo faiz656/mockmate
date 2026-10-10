@@ -251,16 +251,6 @@ const roleQuestions: Record<string, string[]> = {
     "How do you ensure manufacturing tolerances are met in production?",
     "Describe a time a machine you were responsible for broke down unexpectedly.",
   ],
-  software_engineer: [
-    "Explain how you would design a URL shortener like bit.ly from scratch.",
-    "Walk me through the most complex system you have built.",
-    "How do you approach code review — what do you look for?",
-    "Describe a production bug you fixed. Be specific about the cause and fix.",
-    "How do you handle technical debt in a fast-moving project?",
-    "What is your approach to writing clean, maintainable code?",
-    "How would you design a system to handle 1 million requests per day?",
-    "Walk me through how Git works internally — not the commands, the data model.",
-  ],
   telecom_engineer: [
     "Explain the difference between 4G LTE and 5G — technically.",
     "How does a GSM network handle handover between towers?",
