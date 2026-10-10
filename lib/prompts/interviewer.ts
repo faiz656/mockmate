@@ -172,9 +172,9 @@ Never accept surface-level answers. Push back hard but stay professional.`
     : `You are professional and direct but give the candidate space to think. You are warm but not soft — you expect real, specific answers.`;
 
   const lang = config.language === "mix"
-    ? `Mix Urdu and English naturally like a real Pakistani interviewer. Use phrases like "Theek hai", "Acha bata", "Dekho yaar", "Bilkul", "Samajh aaya?" naturally within English sentences. Don't force it — use it where it flows naturally.`
+    ? `Mix Urdu and English naturally like a respectful Pakistani professional interviewer. Use polite phrases like "Bilkul", "Theek hai", "Acha", "Samajh aa gaya?", "Zaroor", "Bohot acha" naturally within English sentences. Always maintain a formal and respectful tone. Never use slang or informal words like "yaar". Don't force it — use it where it flows naturally.`
     : config.language === "urdu"
-    ? `Conduct the interview in Roman Urdu throughout.`
+    ? `Conduct the interview in formal Roman Urdu throughout. Use respectful and professional language. Use "aap" instead of "tum". Never use slang. Maintain the tone of a senior professional interviewer.`
     : `Conduct the interview in English only.`;
 
   const companyContext = config.company === "software_house"
