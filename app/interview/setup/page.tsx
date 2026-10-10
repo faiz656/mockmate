@@ -25,6 +25,15 @@ const ROLES = [
   { value: "finance", label: "Finance & Accounting", icon: "💰" },
   { value: "content_writer", label: "Content Writer", icon: "✍️" },
   { value: "graphic_designer", label: "Graphic Designer", icon: "🎭" },
+  { value: "electrical_engineer", label: "Electrical Engineer", icon: "⚡" },
+  { value: "electronic_engineer", label: "Electronics Engineer", icon: "🔌" },
+  { value: "civil_engineer", label: "Civil Engineer", icon: "🏗️" },
+  { value: "mechanical_engineer", label: "Mechanical Engineer", icon: "⚙️" },
+  { value: "software_engineer", label: "Software Engineer", icon: "💻" },
+  { value: "telecom_engineer", label: "Telecom Engineer", icon: "📡" },
+  { value: "chemical_engineer", label: "Chemical Engineer", icon: "🧪" },
+  { value: "industrial_engineer", label: "Industrial Engineer", icon: "🏭" },
+  { value: "computing_engineer", label: "Computing Engineer", icon: "🖥️" },
 ];
 
 export default function SetupPage() {

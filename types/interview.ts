@@ -18,7 +18,16 @@ export type InterviewRole =
   | "marketing"
   | "finance"
   | "content_writer"
-  | "graphic_designer";
+  | "graphic_designer"
+  | "electrical_engineer"
+  | "electronic_engineer"
+  | "civil_engineer"
+  | "mechanical_engineer"
+  | "software_engineer"
+  | "telecom_engineer"
+  | "chemical_engineer"
+  | "industrial_engineer"
+  | "computing_engineer";
 
 export type ExperienceLevel = "fresh" | "1_2_years" | "3_5_years";
 
