@@ -493,7 +493,8 @@ export default function InterviewRoomPage() {
 
   const stopPTT = useCallback(() => {
     if (!dcRef.current || dcRef.current.readyState !== "open") return;
-    if (!isPressing) return;
+    // Mute mic immediately
+    if (gainNodeRef.current) gainNodeRef.current.gain.value = 0;
     setIsPressing(false);
     setIsRecording(false);
     dcRef.current.send(JSON.stringify({ type: "input_audio_buffer.commit" }));
@@ -502,7 +503,7 @@ export default function InterviewRoomPage() {
         dcRef.current.send(JSON.stringify({ type: "response.create" }));
       }
     }, 200);
-  }, [isPressing]);
+  }, []);
 
   const endInterview = async () => {
     clearInterval(timerRef.current);
