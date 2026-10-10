@@ -5,7 +5,20 @@ export type InterviewRole =
   | "mobile_developer"
   | "data_scientist"
   | "devops_engineer"
-  | "ui_ux_designer";
+  | "ui_ux_designer"
+  | "project_manager"
+  | "business_analyst"
+  | "qa_engineer"
+  | "cybersecurity"
+  | "ai_ml_engineer"
+  | "network_engineer"
+  | "database_admin"
+  | "sales_executive"
+  | "hr_manager"
+  | "marketing"
+  | "finance"
+  | "content_writer"
+  | "graphic_designer";
 
 export type ExperienceLevel = "fresh" | "1_2_years" | "3_5_years";
 

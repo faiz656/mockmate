@@ -11,6 +11,20 @@ const ROLES = [
   { value: "mobile_developer", label: "Mobile Developer", icon: "📱" },
   { value: "data_scientist", label: "Data Scientist", icon: "📊" },
   { value: "devops_engineer", label: "DevOps Engineer", icon: "🔧" },
+  { value: "ui_ux_designer", label: "UI/UX Designer", icon: "🖌️" },
+  { value: "project_manager", label: "Project Manager", icon: "📋" },
+  { value: "business_analyst", label: "Business Analyst", icon: "📈" },
+  { value: "qa_engineer", label: "QA Engineer", icon: "🧪" },
+  { value: "cybersecurity", label: "Cybersecurity Engineer", icon: "🔐" },
+  { value: "ai_ml_engineer", label: "AI/ML Engineer", icon: "🤖" },
+  { value: "network_engineer", label: "Network Engineer", icon: "🌐" },
+  { value: "database_admin", label: "Database Administrator", icon: "🗄️" },
+  { value: "sales_executive", label: "Sales Executive", icon: "💼" },
+  { value: "hr_manager", label: "HR Manager", icon: "👥" },
+  { value: "marketing", label: "Digital Marketing", icon: "📣" },
+  { value: "finance", label: "Finance & Accounting", icon: "💰" },
+  { value: "content_writer", label: "Content Writer", icon: "✍️" },
+  { value: "graphic_designer", label: "Graphic Designer", icon: "🎭" },
 ];
 
 export default function SetupPage() {
