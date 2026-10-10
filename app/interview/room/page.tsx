@@ -48,7 +48,6 @@ export default function InterviewRoomPage() {
   const [pushToTalk, setPushToTalk] = useState(true);
   const pushToTalkRef = useRef(true);
   const [isPressing, setIsPressing] = useState(false);
-  const audioContextRef = useRef<AudioContext | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
@@ -325,6 +324,7 @@ export default function InterviewRoomPage() {
       if (streamRef.current) {
         const audioCtx = new AudioContext();
         audioCtxRef.current = audioCtx;
+        await audioCtx.resume();
         const source = audioCtx.createMediaStreamSource(streamRef.current);
         const gainNode = audioCtx.createGain();
         gainNodeRef.current = gainNode;
